@@ -18,6 +18,6 @@ I really wrote most of this code, but AI did help out (Cursor). Cursor was mainl
 
 ---
 
-# Part 2 - Filtered Backprojection Method
+## Part 2 - Filtered Backprojection Method
 
-# Part 3 - Annihilation Simulation
+## Part 3 - Annihilation Simulation
