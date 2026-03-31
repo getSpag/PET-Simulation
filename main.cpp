@@ -8,7 +8,7 @@
 
 
 int IMAGE_SIZE = 500;
-int EMITTER_RADIUS = 40;
+// int EMITTER_RADIUS = 40;
 
 
 
@@ -136,7 +136,12 @@ void draw_line(std::vector<cv::Point2d> &line, cv::Mat &image)
 
 int main(int argc, char** argv) 
 {
-    
+   
+    assert(argc >= 3);
+    int NUM_EMITTERS = std::stoi(argv[1]);
+    int EMITTER_RADIUS = std::stoi(argv[2]); 
+
+
     /* 
         Create Image of emitter, and clear_image to clean / setup
 
@@ -153,7 +158,7 @@ int main(int argc, char** argv)
             (emitters are same colour as background)
     */
     srand(time(NULL));
-    for (int i = 0; i < 10; i++) 
+    for (int i = 0; i < NUM_EMITTERS; i++) 
     {
         int x = rand() % IMAGE_SIZE;
         int y = rand() % IMAGE_SIZE;
