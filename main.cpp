@@ -13,6 +13,7 @@ int IMAGE_SIZE = 500;
 /*
 TODO
 - Normalization for bucketing in busy emitters
+- sinogram upside down
 
 */
 
@@ -262,7 +263,7 @@ int main(int argc, char** argv)
     double angle = 0;
     cv::Point2d midpoint = cv::Point2d(floor(IMAGE_SIZE/2),floor(IMAGE_SIZE/2));
     int err = 0;
-    int height_count = 0;
+    int height_count = IMAGE_SIZE - 1;
 
 
     cv::Mat display;
@@ -283,7 +284,7 @@ int main(int argc, char** argv)
 
             construct_sinogram(j, all_lines[j], emitter_image, noise_free_sinogram, height_count);
         }
-        height_count++;
+        height_count--;
 
 
         // display the image
