@@ -14,7 +14,7 @@ Here is a gif of some of my results. Please enjoy. This is a WIP!
 
 Utilized C++ and OpenCV to animate the Forward Projection of a noiseless sinogram based on random emitter locations. This will eventually be compared with a noisy sinogram from simulated annihilation events, in the context of their reconstruction via Filtered Back Projection.
 
-I really wrote most of this code, but AI did help out (Cursor). Cursor was mainly for documentation questions and debugging. 
+I really wrote this code, but AI did help out (Cursor). Cursor was mainly for documentation questions and debugging. 
 
 ---
 
