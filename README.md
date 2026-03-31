@@ -12,7 +12,12 @@ Here is a gif of some of my results. Please enjoy. This is a WIP!
 ![gif sinogram](https://github.com/user-attachments/assets/d82d30c9-4003-4293-8279-ff342061e445)
 
 
-
-
+Utilized C++ and OpenCV to animate the Forward Projection of a noiseless sinogram based on random emitter locations. This will eventually be compared with a noisy sinogram from simulated annihilation events, in the context of their reconstruction via Filtered Back Projection.
 
 I really wrote most of this code, but AI did help out (Cursor). Cursor was mainly for documentation questions and debugging. 
+
+---
+
+# Part 2 - Filtered Backprojection Method
+
+# Part 3 - Annihilation Simulation
