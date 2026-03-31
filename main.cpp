@@ -10,6 +10,12 @@
 int IMAGE_SIZE = 500;
 // int EMITTER_RADIUS = 40;
 
+/*
+TODO
+- Normalization for bucketing in busy emitters
+
+*/
+
 
 
 bool in_circle(cv::Point2d point, cv::Point2d center, int radius);
