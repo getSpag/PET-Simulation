@@ -9,12 +9,14 @@ I tried to do something similar to Andrew Reader, who has a great youtube series
 Here is a gif of some of my results. Please enjoy. This is a WIP!
 
 
-![gif sinogram](https://github.com/user-attachments/assets/d82d30c9-4003-4293-8279-ff342061e445)
+<p align = "center"> ![gif sinogram](https://github.com/user-attachments/assets/d82d30c9-4003-4293-8279-ff342061e445) </p>
+<p align = "center"> Left: Random Emitters | Middle: (a few) Forward Projection Lines for Integrating | Right: Sinogram </p>
 
 
-Utilized C++ and OpenCV to animate the Forward Projection of a noiseless sinogram based on random emitter locations. This will eventually be compared with a noisy sinogram from simulated annihilation events, in the context of their reconstruction via Filtered Back Projection.
 
-I really wrote this code, but AI did help out (Cursor). Cursor was mainly for documentation questions and debugging. 
+"Utilized C++ and OpenCV to animate the Forward Projection of a noiseless sinogram based on random emitter locations. This will eventually be compared with a noisy sinogram from simulated annihilation events, in the context of their reconstruction via Filtered Back Projection."
+
+I wrote this code, but AI did help out (Cursor). Cursor was mainly for documentation questions and debugging. 
 
 ---
 
