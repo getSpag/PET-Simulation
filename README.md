@@ -15,4 +15,4 @@ Here is a gif of some of my results. Please enjoy. This is a WIP!
 
 
 
-I really wrote most of this code, but AI did help out (Cursor). This was mainly for documentation questions errors on running, as well as helping out with setting up the environment.
+I really wrote most of this code, but AI did help out (Cursor). Cursor was mainly for documentation questions and debugging. 
