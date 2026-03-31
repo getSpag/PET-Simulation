@@ -10,7 +10,7 @@ Here is a gif of some of my results. Please enjoy. This is a WIP!
 
 
 <p align = "center"> <img src=https://github.com/user-attachments/assets/d82d30c9-4003-4293-8279-ff342061e445 alt="Sinogram Gif"> </p>
-<p align = "center"> Left: Random Emitters | Middle: (a few) Forward Projection Lines for Integrating | Right: Sinogram </p>
+<p align = "center"> <small> Left: Random Emitters | Middle: (a few) Forward Projection Scan Lines for Integrating | Right: Sinogram </p>
 
 
 
