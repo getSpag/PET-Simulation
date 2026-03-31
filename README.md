@@ -13,7 +13,7 @@ Here is a gif of some of my results. Please enjoy. This is a WIP!
 <p align = "center"> <i> Left: Random Emitters | Middle: (a few) Forward Projection Scan Lines for Integrating | Right: Sinogram </i> </p>
 
 
-** Sinogram upsidedown, quik fix
+** Sinogram upsidedown, fixed in code already
 
 "Utilized C++ and OpenCV to animate the Forward Projection or Radon Transform of a noiseless sinogram based on random emitter locations. This will eventually be compared with a noisy sinogram from simulated annihilation events, in the context of their reconstruction via Filtered Back Projection."
 
