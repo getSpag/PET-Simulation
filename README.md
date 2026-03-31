@@ -6,9 +6,10 @@ This is meant to be a noiseless sinogram, to later compare with one determined f
 
 I tried to do something similar to Andrew Reader, who has a great youtube series on this kind of thing. You can find it [here](https://www.youtube.com/playlist?list=PL557uxcMh3xzkLucqdvHgwU4zlheu_CKI).
 
-Here is a gif of some of my results. Please enjoy.
+Here is a gif of some of my results. Please enjoy. This is a WIP!
 
 
+![gif sinogram](https://github.com/user-attachments/assets/d82d30c9-4003-4293-8279-ff342061e445)
 
 
 
