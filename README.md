@@ -14,6 +14,7 @@ Here is a gif of some of my results. Please enjoy. This is a WIP!
 
 
 ** Sinogram upsidedown, fixed in code already
+** Need to normalize the sinogram for when counts are > 255, this will matter for bigger pictures and emitters
 
 "Utilized C++ and OpenCV to animate the Forward Projection or Radon Transform of a noiseless sinogram based on random emitter locations. This will eventually be compared with a noisy sinogram from simulated annihilation events, in the context of their reconstruction via Filtered Back Projection."
 
