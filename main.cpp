@@ -53,6 +53,12 @@ void construct_sinogram(int line_number, std::vector<cv::Point2d> &scan_line, cv
     // May need to normalize for busy emitters (255 is not a lot of hits)
 
     cv::Vec3b curr = noise_free_sinogram.at<cv::Vec3b>(height_count, line_number);
+
+    if ((curr[0] + count >= 255) || (curr[1] + count >= 255) || (curr[2] + count >= 255))
+    {
+        std::cout << "Hit the money!" << std::endl;
+    }
+    // this is the only place where the sinogram is updated
     noise_free_sinogram.at<cv::Vec3b>(height_count, line_number) = cv::Vec3b(
         std::min(curr[0] + count, 255),
         std::min(curr[1] + count,255),
