@@ -6,7 +6,10 @@ This is meant to be a noiseless sinogram, to later compare with one determined f
 
 I tried to do something similar to Andrew Reader, who has a great youtube series on this kind of thing. You can find it [here](https://www.youtube.com/playlist?list=PL557uxcMh3xzkLucqdvHgwU4zlheu_CKI).
 
-Here is a gif of some of my results. Please enjoy. This is a WIP!
+Here is a gif of some of my results. Please enjoy. This is a WIP! 
+
+[Coming SOON!]
+
 
 *Left: Random Emitters | Middle: (a few) Forward Projection Scan Lines for Integrating | Right: Sinogram*
 
