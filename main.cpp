@@ -1,74 +1,74 @@
 
+// #include <opencv2/core/types.hpp>
+// #include <opencv2/highgui.hpp>
 #include <opencv2/opencv.hpp>
 // #include <opencv2/highgui/highgui.hpp>
 // #include <opencv2/imgproc/imgproc.hpp>
 // #include <opencv2/imgcodecs/imgcodecs.hpp>
+#include <algorithm>
 #include <cmath>
 #include <vector>
+#include <ranges>
 
 
-int IMAGE_SIZE = 500;
+int IMAGE_SIZE = 500; //1024;
+cv::Point2d CENTER = cv::Point2d(floor(IMAGE_SIZE/2)-1,floor(IMAGE_SIZE/2)-1);
+int RADIUS = floor(IMAGE_SIZE / 2);
 // int EMITTER_RADIUS = 40;
 
+// CMDLINE ARGS -- ./build/PET <emitter count> <emitter radius>
+//
+
 /*
+UPDATE APRIL 8 2026
+- Changed some names
+- Changed out of bounds area colour to gray (emitters outside this region still not coulored over, but not used either)
+- Updated sinogram to keep track of true counts, instead of maxing out at 255, so that the final image is remapped from [0, max_count] -> [0, 255], only iff max_count > 255. 
+        Not sure if best. Will have to implement FBP
+- Increased IMAGE_SIZE, tested some higher counts
+    - LAST TEST: ./build/PET 500 10, IMAGE_SIZE 1024
+    Better IMAGE_SIZE 500 because frame skipping not implemented (waiting each IMAGE_SIZE of pixels rows drawn of sinogram, so animation is quite slow for high counts)
+
+
+
 TODO
-- Normalization for bucketing in busy emitters
-- sinogram upside down
+- Implement FPB to test your sinogram
+- Colour over OOB emitters
+- Other quality of life checks
+    understanding the even circle centers (2x2 or 4x4 for example)
+    arbitrary input images
+- parallel? idk think later
+
+
 
 */
 
 
-
-bool in_circle(cv::Point2d point, cv::Point2d center, int radius);
-
-void construct_sinogram(int line_number, std::vector<cv::Point2d> &scan_line, cv::Mat &emitter_image, cv::Mat &noise_free_sinogram, int &height_count)
+bool in_circle(cv::Point2d &point, cv::Point2d &center, int radius)
 {
-    // sum along the line, and place in the appropriate bin 
-
-    if (height_count == IMAGE_SIZE - 1)
-    {
-        return;
-    }
-
-
-    // Count along the scan line, and bucket the count to this line's cell
-
-    int count = 0;
-    for (int i = 0; i < static_cast<int>(scan_line.size()); i++)
-    {
-
-        // DO NOT FORGET TO ROUND THESE HERE TOO
-        // FINAL ROUND
-
-        const int ix = static_cast<int>(std::lround(scan_line[i].x));
-        const int iy = static_cast<int>(std::lround(scan_line[i].y));
-        if (ix < 0 || ix >= emitter_image.cols || iy < 0 || iy >= emitter_image.rows)
-            continue;
-        if (emitter_image.at<cv::Vec3b>(iy, ix) == cv::Vec3b(255, 255, 255))
-            count += 1;
-    }
-
-
-    // Not sure if this is 100% correct, the way I am binning the counts 
-    // May need to normalize for busy emitters (255 is not a lot of hits)
-
-    cv::Vec3b curr = noise_free_sinogram.at<cv::Vec3b>(height_count, line_number);
-
-    if ((curr[0] + count >= 255) || (curr[1] + count >= 255) || (curr[2] + count >= 255))
-    {
-        std::cout << "Hit the money!" << std::endl;
-    }
-    // this is the only place where the sinogram is updated
-    noise_free_sinogram.at<cv::Vec3b>(height_count, line_number) = cv::Vec3b(
-        std::min(curr[0] + count, 255),
-        std::min(curr[1] + count,255),
-        std::min(curr[2] + count,255));
-
-
-
+    // test if a point is in / on the circle by radius
+    double x_diff = point.x - center.x;
+    double y_diff = point.y - center.y;
+    double d_sq = x_diff * x_diff + y_diff * y_diff;
+    double rad_sq = static_cast<double>(radius) * radius;
+    if (d_sq > rad_sq)
+        return false;
+    return true;
 }
 
-int rotate(cv::Point2d &toRotate, cv::Point2d about, double angle)
+// rectangle check and odd sizes (when center is even like a 2x2 or 4x4)
+bool in_detector(cv::Point2d &point, int image_cols, int image_rows)
+{
+    // must be in / on the circle to be true
+    // Is a more robust check than in_circle (rectangle check and odd sizes?)
+    if (point.x < 0 || point.x >= image_cols || point.y < 0 || point.y >= image_rows || !in_circle(point, CENTER, floor(IMAGE_SIZE/2)))
+    {
+        return false;
+    }
+    return true;
+}
+
+int rotate(cv::Point2d &toRotate, cv::Point2d &about, double angle)
 {
 
     // translate point about to origin, rotate using matrix
@@ -87,43 +87,25 @@ int rotate(cv::Point2d &toRotate, cv::Point2d about, double angle)
     return 0;
 }
 
-void clear_image(cv::Mat &image)
+void refresh_canvas(cv::Mat &image)
 {
     for (int i = 0; i < image.rows - 1; i++)
     {
         for (int j = 0; j < image.cols - 1; j++)
         {
-            // there was a shortcut taken here to also colour the outside of the circle white -- not just the edge of the whole square image
-            if (i == 0 || i == image.rows - 1 || j == 0 || j == image.cols - 1 || !in_circle(cv::Point2d(j, i), cv::Point2d(floor(IMAGE_SIZE / 2) - 1, floor(IMAGE_SIZE / 2) - 1), floor(IMAGE_SIZE / 2)))
-                image.row(i).col(j).setTo(cv::Scalar(255, 255, 255));
+            cv::Point2d point = cv::Point2d(j, i);
+
+            // COLOUR POINTS OUTSIDE DETECTOR GRAY
+            if (i == 0 || i == image.rows - 1 || j == 0 || j == image.cols - 1 || !in_circle(point, CENTER, RADIUS))
+                image.row(i).col(j).setTo(cv::Scalar(128,128,128));
+
+            // COLOUR POINTS INSIDE DETECTOR BLACK 
             else
                 image.row(i).col(j).setTo(cv::Scalar(0, 0, 0));
         }
     }
 }
 
-
-bool in_image(cv::Point2d point, int image_x, int image_y)
-{
-    // must be in / on the circle to be true, calls in_circle, I don't like how these functions are tied
-    if (point.x < 0 || point.x >= image_x || point.y < 0 || point.y >= image_y || !in_circle(point, cv::Point2d(floor(IMAGE_SIZE/2)-1,floor(IMAGE_SIZE/2)-1), floor(IMAGE_SIZE/2)))
-    {
-        return false;
-    }
-    return true;
-}
-
-bool in_circle(cv::Point2d point, cv::Point2d center, int radius)
-{
-    // test if a point is in / on the circle by radius
-    double x_diff = point.x - center.x;
-    double y_diff = point.y - center.y;
-    double d_sq = x_diff * x_diff + y_diff * y_diff;
-    double rad_sq = static_cast<double>(radius) * radius;
-    if (d_sq > rad_sq)
-        return false;
-    return true;
-}
 
 
 void draw_line(std::vector<cv::Point2d> &line, cv::Mat &image)
@@ -138,14 +120,96 @@ void draw_line(std::vector<cv::Point2d> &line, cv::Mat &image)
     for (int i = 0; i < static_cast<int>(line.size()); i++)
     {
         // FINALLY ROUND BEFORE DRAWING (ACCESSING for yoru line INTEGRAL)
-        const long ix = std::lround(line[i].x);
-        const long iy = std::lround(line[i].y);
-        if (in_image(cv::Point2d(ix, iy), image.cols, image.rows))
+        long ix = std::lround(line[i].x);
+        long iy = std::lround(line[i].y);
+        cv::Point2d point = cv::Point2d(ix, iy);
+
+        // Only draw in the detector
+        // rotated lines can leave the image so just use the in_detector more robust check, instead of just in_circle
+        if (in_detector(point, image.cols, image.rows))
         {
             image.row(iy).col(ix).setTo(cv::Scalar(128, 128, 128));
         }
     }
 }
+
+
+
+// takes another argument to the final image to deposit TRUE COUNTS
+// the animation will just display "about" what it is, since it is going line by line
+// final version is fully corrected
+//
+// made it take all scan lines by reference so that the indexing makes more sense
+//
+void construct_sinogram(int &line_number, int &output_row, std::vector<std::vector<cv::Point2d>> &scan_lines, std::vector<std::vector<int>> &true_counts, cv::Mat &emitter_image, cv::Mat &noise_free_sinogram)
+{
+    // sum along the line, and place in the appropriate bin 
+
+    if (output_row >= IMAGE_SIZE  || output_row < 0 || line_number < 0 || line_number >= IMAGE_SIZE)
+    {
+        // std::cout << "what is the problem" << std::endl;
+        return;
+    }
+
+    // EQUIVALENT TO DOT PRODUCT OF THE LINE WITH VECTOR OF 1s INSIDE DETECTOR BOUNDS
+
+    // Count along the scan line, and bucket the count to this line's cell
+
+    int count = 0;
+    for (int i = 0; i < static_cast<int>(scan_lines[line_number - 1].size()); i++)
+    {
+
+        // DO NOT FORGET TO ROUND THESE HERE TOO
+        // FINAL ROUND
+
+        int ix = static_cast<int>(std::lround(scan_lines[line_number - 1][i].x));
+        int iy = static_cast<int>(std::lround(scan_lines[line_number - 1][i].y));
+
+
+        // If point is in detector AND point is White (an emitting pixel)
+        cv::Point2d point = cv::Point2d(ix, iy);
+
+        // if (in_circle(point, CENTER, RADIUS) && emitter_image.at<cv::Vec3b>(iy, ix) == cv::Vec3b(255, 255, 255))
+        // rotated lines can leave the image so just use the in_detector more robust check, instead of just in_circle
+        if (in_detector(point, emitter_image.cols, emitter_image.rows) && emitter_image.at<cv::Vec3b>(iy, ix) == cv::Vec3b(255, 255, 255))
+        {
+            count += 1;
+        }
+
+    }
+
+
+
+    cv::Vec3b curr = noise_free_sinogram.at<cv::Vec3b>(output_row, line_number);
+
+    if ((curr[0] + count >= 255) || (curr[1] + count >= 255) || (curr[2] + count >= 255))
+    {
+        std::cout << "A max count was reached!" << std::endl;
+    }
+
+
+
+    true_counts[output_row][line_number] += count;
+
+    // this is the only place where the sinogram is updated
+    // this is temporary for the scan to show line by line, the image will be normalized later
+    noise_free_sinogram.at<cv::Vec3b>(output_row, line_number) = cv::Vec3b(
+        std::min(curr[0] + count, 255),
+        std::min(curr[1] + count,255),
+        std::min(curr[2] + count,255)
+    );
+
+
+}
+
+
+
+
+
+
+
+
+
 
 int main(int argc, char** argv) 
 {
@@ -156,12 +220,12 @@ int main(int argc, char** argv)
 
 
     /* 
-        Create Image of emitter, and clear_image to clean / setup
+        Create Image of emitter, and refresh_canvas to clean / setup
 
-        clear_image marks everything outside of a IMAGE_SIZE-diametered circle white
+        refresh_canvas marks everything outside of a IMAGE_SIZE-diametered circle white
     */
     cv::Mat emitter_image(IMAGE_SIZE, IMAGE_SIZE, CV_8UC3, cv::Scalar(0, 0, 0));
-    clear_image(emitter_image);
+    refresh_canvas(emitter_image);
 
 
     /* 
@@ -192,7 +256,7 @@ int main(int argc, char** argv)
     
     */
     cv::Mat visual_line_integral_FP_BP(IMAGE_SIZE, IMAGE_SIZE, CV_8UC3, cv::Scalar(0, 0, 0));
-    clear_image(visual_line_integral_FP_BP);
+    refresh_canvas(visual_line_integral_FP_BP);
 
     cv::Mat noise_free_sinogram(IMAGE_SIZE, IMAGE_SIZE, CV_8UC3, cv::Scalar(0, 0, 0));
     
@@ -218,6 +282,7 @@ int main(int argc, char** argv)
     // we won't need all IMAGE_SIZE on inner dimension except for in the middle row
     std::vector<std::vector<cv::Point2d>> all_lines(IMAGE_SIZE);//,std::vector<cv::Point2d>(IMAGE_SIZE));
     std::vector<std::vector<cv::Point2d>> all_base_lines(IMAGE_SIZE);//,std::vector<cv::Point2d>(IMAGE_SIZE));
+    std::vector<std::vector<int>> true_counts(IMAGE_SIZE, std::vector<int>(IMAGE_SIZE, 0));
 
 
 
@@ -269,7 +334,7 @@ int main(int argc, char** argv)
     double angle = 0;
     cv::Point2d midpoint = cv::Point2d(floor(IMAGE_SIZE/2),floor(IMAGE_SIZE/2));
     int err = 0;
-    int height_count = IMAGE_SIZE - 1;
+    int output_row = IMAGE_SIZE - 1;
 
 
     cv::Mat display;
@@ -280,7 +345,7 @@ int main(int argc, char** argv)
     {
 
         // clear the image
-        clear_image(visual_line_integral_FP_BP);
+        refresh_canvas(visual_line_integral_FP_BP);
 
         // draw the lines
         for (int j = 0; j < IMAGE_SIZE; j++)
@@ -288,15 +353,17 @@ int main(int argc, char** argv)
             if (j % 50 == 0)
                 draw_line(all_lines[j], visual_line_integral_FP_BP);
 
-            construct_sinogram(j, all_lines[j], emitter_image, noise_free_sinogram, height_count);
+            construct_sinogram(j, output_row, all_lines, true_counts,emitter_image, noise_free_sinogram);
+            // function signature
+            // construct_sinogram(int &line_number, int &output_row, std::vector<std::vector<cv::Point2d>> &scan_lines, std::vector<std::vector<cv::Point2d>> &true_counts, cv::Mat &emitter_image, cv::Mat &noise_free_sinogram)
         }
-        height_count--;
+        output_row--;
 
 
         // display the image
         cv::hconcat(std::vector<cv::Mat>{emitter_image, visual_line_integral_FP_BP, noise_free_sinogram}, display);
         cv::imshow("Noise Free Sinogram FP Simulation", display);
-        cv::waitKey(10);
+        cv::waitKey(1);
 
 
         // TOTAL ANGLE FOR THIS FRAME, NOT SMALL ONES FOR ERROR-ACCUMULATING ROTATES
@@ -319,6 +386,64 @@ int main(int argc, char** argv)
 
     }
 
+   
+
+    // normalize the sinogram with true_counts -- get max and min counts, and map to 0 to 255
+    int max_count = 0;
+    // find max value in 2D array
+    for (const auto& row : true_counts) {
+        if (!row.empty()) {
+            auto it = std::max_element(row.begin(), row.end());
+            max_count = std::max(max_count, *it);
+        }
+    }
+
+    std::cout << "Max count: " << max_count << std::endl;
+
+    // now make everything max_count / 255 times SMALLER
+    // so mat[i][j] = mat[i][j] * 255 / max_count
+    // and just write it to the noise_free_sinogram
+
+    // C++ 23 compiler support?
+    // for (auto [i, row] : std::views::enumerate(true_counts))
+    // {
+    //     for (auto [j, count] : std::views::enumerate(row))
+    //     {
+
+    //     }
+    // }
+
+    if (max_count > 255)
+    {
+        int new_value =0;
+        cv::Vec3b curr;
+        for (int i = 0; i < IMAGE_SIZE; i++)
+        {
+            for (int j = 0; j < IMAGE_SIZE; j++)
+            {
+                curr = noise_free_sinogram.at<cv::Vec3b>(i, j);
+    
+                // 3 channel, but is grayscale anyways lol
+                new_value = floor(true_counts[i][j] * 255 / max_count);
+                if (new_value >= 254)
+                    std::cout << "New value: " << new_value << std::endl;
+                noise_free_sinogram.at<cv::Vec3b>(i, j) = cv::Vec3b(
+                    new_value,
+                    new_value,
+                   new_value 
+                );
+            }
+        }
+    }
+
+
+
+
+
+
+
+
+
     
     /*
         Dislay the final results 
@@ -330,6 +455,14 @@ int main(int argc, char** argv)
     cv::namedWindow("Final", cv::WINDOW_AUTOSIZE);
     cv::imshow("Final", display);
     cv::waitKey(20000);
+
+
+    /*
+
+        Cleanup
+    
+    */
+    cv::destroyAllWindows();
 
 
 
