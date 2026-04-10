@@ -29,8 +29,7 @@ UPDATE APRIL 8 2026
 TODO
 
 - Implement FPB to test your sinogram
-    - Implement FPB to test your sinogram
-    IP
+
 '''
     // basic steps from Andrew Reader, equivalent to 2D transform method
     // (take advantage of linearity, use 1D transforms )
