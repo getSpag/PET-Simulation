@@ -31,9 +31,9 @@ TODO
 - Implement FPB to test your sinogram
 
 '''
+
     // basic steps from Andrew Reader, equivalent to 2D transform method
     // (take advantage of linearity, use 1D transforms )
-
     // projecting = vector(IMAGE_SIZE^2)
     // angle =0
     // angle_increment = increment
