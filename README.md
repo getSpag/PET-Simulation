@@ -8,8 +8,8 @@ I tried to do something similar to Andrew Reader, who has a great youtube series
 
 Here is a gif of some of my results. Please enjoy. This is a WIP! 
 
-[OUTDATED! UPDATED VERSION COMING SOON!]
-gif sinogram
+[OUTDATED! UPDATED VERSION COMING SOON!]![gif sinogram](https://github.com/user-attachments/assets/3b26581f-8176-4361-9fd4-7cd824a435cb)
+
 
 *Left: Random Emitters | Middle: (a few) Forward Projection Scan Lines for Integrating | Right: Sinogram*
 
