@@ -29,22 +29,23 @@ UPDATE APRIL 8 2026
 TODO
 
 - Implement FPB to test your sinogram
+    IP
 
-'''
+  '''
 
-    // basic steps from Andrew Reader, equivalent to 2D transform method
-    // (take advantage of linearity, use 1D transforms )
-    // projecting = vector(IMAGE_SIZE^2)
-    // angle =0
-    // angle_increment = increment
-    // for (auto& row:img)
-    //     1D FT row
-    //     row.RampFilter (multiply by abs(index), middle is zero)
-    //     row.inverseFFT
-    //     set_projecting(projecting, row)
-    //     angle+=increment
-    //     back_project(projecting, angle, image)
-'''
+      // basic steps from Andrew Reader, equivalent to 2D transform method
+      // (take advantage of linearity, use 1D transforms )
+      // projecting = vector(IMAGE_SIZE^2)
+      // angle =0
+      // angle_increment = increment
+      // for (auto& row:img)
+      //     1D FT row
+      //     row.RampFilter (multiply by abs(index), middle is zero)
+      //     row.inverseFFT
+      //     set_projecting(projecting, row)
+      //     angle+=increment
+      //     back_project(projecting, angle, image)
+  '''
     
 - Add axes
 - Colour over OOB emitters
