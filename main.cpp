@@ -8,7 +8,8 @@
 #include <algorithm>
 #include <cmath>
 #include <vector>
-#include <ranges>
+#include <fftw3.h>
+// #include <ranges>
 
 
 int IMAGE_SIZE = 500; //1024;
@@ -20,6 +21,11 @@ int RADIUS = floor(IMAGE_SIZE / 2);
 //
 
 /*
+
+UPDATE APRIL 9 2026
+- Started preparing for FBP integration with looking at video series by Andrew Reader (see TODO)
+
+
 UPDATE APRIL 8 2026
 - Changed some names
 - Changed out of bounds area colour to gray (emitters outside this region still not coulored over, but not used either)
@@ -33,6 +39,25 @@ UPDATE APRIL 8 2026
 
 TODO
 - Implement FPB to test your sinogram
+    IP
+
+    // basic steps from Andrew Reader, equivalent to 2D transform method
+    // (take advantage of linearity, use 1D transforms )
+
+    // projecting = vector(IMAGE_SIZE^2)
+    // angle =0
+    // angle_increment = increment
+    // for (auto& row:img)
+    //     1D FT row
+    //     row.RampFilter (multiply by abs(index), middle is zero)
+    //     row.inverseFFT
+    //     set_projecting(projecting, row)
+    //     angle+=increment
+    //     back_project(projecting, angle, image)
+
+
+
+
 - Colour over OOB emitters
 - Other quality of life checks
     understanding the even circle centers (2x2 or 4x4 for example)
@@ -57,7 +82,7 @@ bool in_circle(cv::Point2d &point, cv::Point2d &center, int radius)
 }
 
 // rectangle check and odd sizes (when center is even like a 2x2 or 4x4)
-bool in_detector(cv::Point2d &point, int image_cols, int image_rows)
+bool in_detector(cv::Point2d &point, int &image_cols, int &image_rows)
 {
     // must be in / on the circle to be true
     // Is a more robust check than in_circle (rectangle check and odd sizes?)
@@ -201,7 +226,6 @@ void construct_sinogram(int &line_number, int &output_row, std::vector<std::vect
 
 
 }
-
 
 
 
@@ -455,6 +479,22 @@ int main(int argc, char** argv)
     cv::namedWindow("Final", cv::WINDOW_AUTOSIZE);
     cv::imshow("Final", display);
     cv::waitKey(20000);
+
+
+
+    // basic steps from Andrew Reader, equivalent to 2D transform method
+    // (take advantage of linearity, use 1D transforms )
+
+    // projecting = vector(IMAGE_SIZE^2)
+    // angle =0
+    // angle_increment = increment
+    // for (auto& row:img)
+    //     1D FT row
+    //     row.RampFilter (multiply by abs(index), middle is zero)
+    //     row.inverseFFT
+    //     set_projecting(projecting, row)
+    //     angle+=increment
+    //     back_project(projecting, angle, image)
 
 
     /*
