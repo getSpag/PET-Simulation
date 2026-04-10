@@ -29,7 +29,7 @@ UPDATE APRIL 8 2026
 TODO
 
 - Implement FPB to test your sinogram
-    IP
+    IP basic steps Andrew Reader
 
   '''
 
