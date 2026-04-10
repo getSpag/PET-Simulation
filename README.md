@@ -31,7 +31,7 @@ TODO
 - Implement FPB to test your sinogram
     - Implement FPB to test your sinogram
     IP
-
+'''
     // basic steps from Andrew Reader, equivalent to 2D transform method
     // (take advantage of linearity, use 1D transforms )
 
@@ -45,7 +45,7 @@ TODO
     //     set_projecting(projecting, row)
     //     angle+=increment
     //     back_project(projecting, angle, image)
-
+'''
     
 - Add axes
 - Colour over OOB emitters
