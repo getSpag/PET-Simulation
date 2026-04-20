@@ -1,14 +1,16 @@
 
 // #include <opencv2/core/types.hpp>
 // #include <opencv2/highgui.hpp>
+#include <opencv2/core.hpp>
 #include <opencv2/opencv.hpp>
 // #include <opencv2/highgui/highgui.hpp>
 // #include <opencv2/imgproc/imgproc.hpp>
 // #include <opencv2/imgcodecs/imgcodecs.hpp>
 #include <algorithm>
+#include <cassert>
 #include <cmath>
+#include <iostream>
 #include <vector>
-#include <fftw3.h>
 // #include <ranges>
 
 
@@ -21,6 +23,8 @@ int RADIUS = floor(IMAGE_SIZE / 2);
 //
 
 /*
+
+# good backprojection animation
 
 UPDATE APRIL 9 2026
 - Started preparing for FBP integration with looking at video series by Andrew Reader (see TODO)
@@ -43,6 +47,7 @@ TODO
 
     // basic steps from Andrew Reader, equivalent to 2D transform method
     // (take advantage of linearity, use 1D transforms )
+    // this avoids rotating to produce the true 2D FT from the sinogram
 
     // projecting = vector(IMAGE_SIZE^2)
     // angle =0
@@ -82,6 +87,7 @@ bool in_circle(cv::Point2d &point, cv::Point2d &center, int radius)
 }
 
 // rectangle check and odd sizes (when center is even like a 2x2 or 4x4)
+// the cols and rows are basically a rotation check (points can rotate out)
 bool in_detector(cv::Point2d &point, int &image_cols, int &image_rows)
 {
     // must be in / on the circle to be true
@@ -159,20 +165,20 @@ void draw_line(std::vector<cv::Point2d> &line, cv::Mat &image)
 }
 
 
-
 // takes another argument to the final image to deposit TRUE COUNTS
 // the animation will just display "about" what it is, since it is going line by line
 // final version is fully corrected
 //
 // made it take all scan lines by reference so that the indexing makes more sense
 //
-void construct_sinogram(int &line_number, int &output_row, std::vector<std::vector<cv::Point2d>> &scan_lines, std::vector<std::vector<int>> &true_counts, cv::Mat &emitter_image, cv::Mat &noise_free_sinogram)
+void construct_sinogram_pixel(int &output_col, int &output_row, std::vector<std::vector<cv::Point2d>> &scan_lines, std::vector<std::vector<int>> &true_counts, cv::Mat &emitter_image, cv::Mat &noise_free_sinogram)
 {
-    // sum along the line, and place in the appropriate bin 
+    // noise_free_sinogram[output_row][output_col] = dot product of all_lines[output_col] with vector of 1s
+    // here we just count them
 
-    if (output_row >= IMAGE_SIZE  || output_row < 0 || line_number < 0 || line_number >= IMAGE_SIZE)
+    if (output_row >= IMAGE_SIZE  || output_row < 0 || output_col < 0 || output_col >= IMAGE_SIZE)
     {
-        // std::cout << "what is the problem" << std::endl;
+        std::cout << "OOB! in construct_sinogram_pixel" << std::endl;
         return;
     }
 
@@ -181,14 +187,14 @@ void construct_sinogram(int &line_number, int &output_row, std::vector<std::vect
     // Count along the scan line, and bucket the count to this line's cell
 
     int count = 0;
-    for (int i = 0; i < static_cast<int>(scan_lines[line_number - 1].size()); i++)
+    for (int i = 0; i < static_cast<int>(scan_lines[output_col - 1].size()); i++)
     {
 
         // DO NOT FORGET TO ROUND THESE HERE TOO
         // FINAL ROUND
 
-        int ix = static_cast<int>(std::lround(scan_lines[line_number - 1][i].x));
-        int iy = static_cast<int>(std::lround(scan_lines[line_number - 1][i].y));
+        int ix = static_cast<int>(std::lround(scan_lines[output_col - 1][i].x));
+        int iy = static_cast<int>(std::lround(scan_lines[output_col - 1][i].y));
 
 
         // If point is in detector AND point is White (an emitting pixel)
@@ -205,7 +211,7 @@ void construct_sinogram(int &line_number, int &output_row, std::vector<std::vect
 
 
 
-    cv::Vec3b curr = noise_free_sinogram.at<cv::Vec3b>(output_row, line_number);
+    cv::Vec3b curr = noise_free_sinogram.at<cv::Vec3b>(output_row, output_col);
 
     if ((curr[0] + count >= 255) || (curr[1] + count >= 255) || (curr[2] + count >= 255))
     {
@@ -214,11 +220,11 @@ void construct_sinogram(int &line_number, int &output_row, std::vector<std::vect
 
 
 
-    true_counts[output_row][line_number] += count;
+    true_counts[output_row][output_col] += count;
 
     // this is the only place where the sinogram is updated
     // this is temporary for the scan to show line by line, the image will be normalized later
-    noise_free_sinogram.at<cv::Vec3b>(output_row, line_number) = cv::Vec3b(
+    noise_free_sinogram.at<cv::Vec3b>(output_row, output_col) = cv::Vec3b(
         std::min(curr[0] + count, 255),
         std::min(curr[1] + count,255),
         std::min(curr[2] + count,255)
@@ -226,12 +232,6 @@ void construct_sinogram(int &line_number, int &output_row, std::vector<std::vect
 
 
 }
-
-
-
-
-
-
 
 
 
@@ -248,6 +248,7 @@ int main(int argc, char** argv)
 
         refresh_canvas marks everything outside of a IMAGE_SIZE-diametered circle white
     */
+    
     cv::Mat emitter_image(IMAGE_SIZE, IMAGE_SIZE, CV_8UC3, cv::Scalar(0, 0, 0));
     refresh_canvas(emitter_image);
 
@@ -317,6 +318,15 @@ int main(int argc, char** argv)
         Fill all_lines and all_base_lines
     */
 
+    bool animating = true;
+
+
+
+    // if (animating)
+    // {
+
+
+
 
     // J IS OUTER DIM HERE
     // fill lines and base lines
@@ -335,6 +345,8 @@ int main(int argc, char** argv)
         // this actually deep copies 
         all_base_lines[j] = all_lines[j];
     }
+
+    // }
 
 
 
@@ -360,6 +372,9 @@ int main(int argc, char** argv)
     int err = 0;
     int output_row = IMAGE_SIZE - 1;
 
+    double t1 = (double)clock()/(double)CLOCKS_PER_SEC;
+    std::cout << "Timing started." << std::endl;
+
 
     cv::Mat display;
     cv::hconcat(std::vector<cv::Mat>{emitter_image, visual_line_integral_FP_BP, noise_free_sinogram}, display);
@@ -374,29 +389,33 @@ int main(int argc, char** argv)
         // draw the lines
         for (int j = 0; j < IMAGE_SIZE; j++)
         {
-            if (j % 50 == 0)
+            if (j % 50 == 0 && animating)
                 draw_line(all_lines[j], visual_line_integral_FP_BP);
 
-            construct_sinogram(j, output_row, all_lines, true_counts,emitter_image, noise_free_sinogram);
+            // noise_free_sinogram[output_row][output_col] = dot product of all_lines[j] with vector of 1s
+            construct_sinogram_pixel(j, output_row, all_lines, true_counts,emitter_image, noise_free_sinogram);
             // function signature
-            // construct_sinogram(int &line_number, int &output_row, std::vector<std::vector<cv::Point2d>> &scan_lines, std::vector<std::vector<cv::Point2d>> &true_counts, cv::Mat &emitter_image, cv::Mat &noise_free_sinogram)
+            // construct_sinogram_pixel(int &output_col, int &output_row, std::vector<std::vector<cv::Point2d>> &scan_lines, std::vector<std::vector<cv::Point2d>> &true_counts, cv::Mat &emitter_image, cv::Mat &noise_free_sinogram)
         }
         output_row--;
 
 
         // display the image
-        cv::hconcat(std::vector<cv::Mat>{emitter_image, visual_line_integral_FP_BP, noise_free_sinogram}, display);
-        cv::imshow("Noise Free Sinogram FP Simulation", display);
-        cv::waitKey(1);
+        if (animating)
+        {
+            cv::hconcat(std::vector<cv::Mat>{emitter_image, visual_line_integral_FP_BP, noise_free_sinogram}, display);
+            cv::imshow("Noise Free Sinogram FP Simulation", display);
+            cv::waitKey(1);
+        }
 
 
-        // TOTAL ANGLE FOR THIS FRAME, NOT SMALL ONES FOR ERROR-ACCUMULATING ROTATES
 
         angle += angle_step;
 
 
         // Reset the lines from last iteration
         // Rotate every point by new total angle
+
 
         for (int j = 0; j < IMAGE_SIZE; j++)
         {
@@ -405,7 +424,6 @@ int main(int argc, char** argv)
                 all_lines[j][i] = all_base_lines[j][i];
                 err = rotate(all_lines[j][i], midpoint, angle);
             }
-
         }
 
     }
@@ -428,14 +446,7 @@ int main(int argc, char** argv)
     // so mat[i][j] = mat[i][j] * 255 / max_count
     // and just write it to the noise_free_sinogram
 
-    // C++ 23 compiler support?
-    // for (auto [i, row] : std::views::enumerate(true_counts))
-    // {
-    //     for (auto [j, count] : std::views::enumerate(row))
-    //     {
 
-    //     }
-    // }
 
     if (max_count > 255)
     {
@@ -467,7 +478,8 @@ int main(int argc, char** argv)
 
 
 
-
+    double t2 = (double)clock()/(double)CLOCKS_PER_SEC;
+    std::cout << "Timing ended at " << t2 - t1 << " seconds." << std::endl;
     
     /*
         Dislay the final results 
@@ -478,17 +490,42 @@ int main(int argc, char** argv)
     cv::hconcat(std::vector<cv::Mat>{emitter_image, visual_line_integral_FP_BP, noise_free_sinogram}, display);
     cv::namedWindow("Final", cv::WINDOW_AUTOSIZE);
     cv::imshow("Final", display);
-    cv::waitKey(20000);
+    cv::waitKey(2000);
 
 
 
     // basic steps from Andrew Reader, equivalent to 2D transform method
     // (take advantage of linearity, use 1D transforms )
 
-    // projecting = vector(IMAGE_SIZE^2)
+
+
+
+    // angle_step
+    // projecting = vector(IMAGE_SIZE)
     // angle =0
     // angle_increment = increment
-    // for (auto& row:img)
+
+    // cv::Mat transformed_sinogram(I)
+
+
+
+
+
+
+    // HERE
+    // cv::Mat transformed_sinogram(IMAGE_SIZE, IMAGE_SIZE, CV_8UC3, cv::Scalar(0, 0, 0));
+
+    // // assumes noise_free_sinogram is image_size tall
+    // for (int i = 0; i < IMAGE_SIZE; i++)
+    // {
+    //     cv::dft(noise_free_sinogram.row(i), transformed_sinogram.row(i));
+
+    // }
+
+
+    // cv::namedWindow("DFT", cv::WINDOW_AUTOSIZE);
+    // cv::imshow("DFT", transformed_sinogram);
+    // cv::waitKey(20000);
     //     1D FT row
     //     row.RampFilter (multiply by abs(index), middle is zero)
     //     row.inverseFFT
@@ -497,6 +534,11 @@ int main(int argc, char** argv)
     //     back_project(projecting, angle, image)
 
 
+
+
+
+
+    //can use the lines from before
     /*
 
         Cleanup
@@ -509,3 +551,14 @@ int main(int argc, char** argv)
 
     return 0;
 }
+
+
+
+    // C++ 23 compiler support?
+    // for (auto [i, row] : std::views::enumerate(true_counts))
+    // {
+    //     for (auto [j, count] : std::views::enumerate(row))
+    //     {
+
+    //     }
+    // }
