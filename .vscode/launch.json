@@ -6,6 +6,9 @@
       "type": "lldb",
       "request": "launch",
       "program": "${workspaceFolder}/build/PET",
+      // "windows": {
+        // "program": "${workspaceFolder}/build/PET.exe"
+      // },
       "args": ["10", "10"],
       "cwd": "${workspaceFolder}",
       "preLaunchTask": "CMake: build"

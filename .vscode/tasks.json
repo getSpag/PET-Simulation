@@ -3,14 +3,20 @@
   "tasks": [
     {
       "label": "CMake: build",
-      "type": "shell",
+      "type": "process",
       "command": "cmake",
       "args": ["--build", "${workspaceFolder}/build"],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PATH": "/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/local/sbin:${env:PATH}"
+        }
+      },
       "group": {
         "kind": "build",
         "isDefault": true
       },
-      "problemMatcher": ["$gcc"]
+      "problemMatcher": []
     }
   ]
 }
