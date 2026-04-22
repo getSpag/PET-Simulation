@@ -14,7 +14,7 @@
 // #include <ranges>
 
 
-int IMAGE_SIZE = 500; //1024;
+int IMAGE_SIZE = 250; //500; //1024;
 cv::Point2d CENTER = cv::Point2d(floor(IMAGE_SIZE/2)-1,floor(IMAGE_SIZE/2)-1);
 int RADIUS = floor(IMAGE_SIZE / 2);
 // int EMITTER_RADIUS = 40;
@@ -24,7 +24,13 @@ int RADIUS = floor(IMAGE_SIZE / 2);
 
 /*
 
-# good backprojection animation
+APRIL 21 2026
+- Still goint through copmmenting FBP implementation, cleaning (making forward projection a function)
+- Is normalizing to 0 to 255 any good if max count was less than 255?
+
+
+APRIL 19&20 2026
+- Back projection pretty much imlemented, it works
 
 UPDATE APRIL 9 2026
 - Started preparing for FBP integration with looking at video series by Andrew Reader (see TODO)
@@ -42,31 +48,14 @@ UPDATE APRIL 8 2026
 
 
 TODO
-- Implement FPB to test your sinogram
-    IP
-
-    // basic steps from Andrew Reader, equivalent to 2D transform method
-    // (take advantage of linearity, use 1D transforms )
-    // this avoids rotating to produce the true 2D FT from the sinogram
-
-    // projecting = vector(IMAGE_SIZE^2)
-    // angle =0
-    // angle_increment = increment
-    // for (auto& row:img)
-    //     1D FT row
-    //     row.RampFilter (multiply by abs(index), middle is zero)
-    //     row.inverseFFT
-    //     set_projecting(projecting, row)
-    //     angle+=increment
-    //     back_project(projecting, angle, image)
-
-
-
-
-- Colour over OOB emitters
+- Commenting / cleaning
+- Is normalizing to 0 to 255 any good if max count was less than 255?
+- Verify FPB
+- Colour over OOB emitters DONE, BETTER SOLUTION IN populate_detector_region_with_random_emitters
 - Other quality of life checks
     understanding the even circle centers (2x2 or 4x4 for example)
     arbitrary input images
+    FFTSHIFt only do when animating / showing the picture
 - parallel? idk think later
 
 
@@ -88,7 +77,7 @@ bool in_circle(cv::Point2d &point, cv::Point2d &center, int radius)
 
 // rectangle check and odd sizes (when center is even like a 2x2 or 4x4)
 // the cols and rows are basically a rotation check (points can rotate out)
-bool in_detector(cv::Point2d &point, int &image_cols, int &image_rows)
+bool in_detector(cv::Point2d &point, int image_cols, int image_rows)
 {
     // must be in / on the circle to be true
     // Is a more robust check than in_circle (rectangle check and odd sizes?)
@@ -128,11 +117,11 @@ void refresh_canvas(cv::Mat &image)
 
             // COLOUR POINTS OUTSIDE DETECTOR GRAY
             if (i == 0 || i == image.rows - 1 || j == 0 || j == image.cols - 1 || !in_circle(point, CENTER, RADIUS))
-                image.row(i).col(j).setTo(cv::Scalar(128,128,128));
+                image.row(i).col(j).setTo(cv::Scalar(128));
 
             // COLOUR POINTS INSIDE DETECTOR BLACK 
             else
-                image.row(i).col(j).setTo(cv::Scalar(0, 0, 0));
+                image.row(i).col(j).setTo(cv::Scalar(0));
         }
     }
 }
@@ -142,7 +131,7 @@ void refresh_canvas(cv::Mat &image)
 void draw_line(std::vector<cv::Point2d> &line, cv::Mat &image)
 {
     /*
-    test function used on cv::Mat visual_line_integral_FP_BP
+    test function used on cv::Mat visual_line_integral_image
     helps to visualize the rotating lines that are integrated along
 
     TO AVOID DRAWING ERROR accumulation 
@@ -159,19 +148,41 @@ void draw_line(std::vector<cv::Point2d> &line, cv::Mat &image)
         // rotated lines can leave the image so just use the in_detector more robust check, instead of just in_circle
         if (in_detector(point, image.cols, image.rows))
         {
-            image.row(iy).col(ix).setTo(cv::Scalar(128, 128, 128));
+            image.row(iy).col(ix).setTo(cv::Scalar(128));
         }
     }
 }
 
+void backproject_sinogram_pixel(int output_col, int output_row, const std::vector<std::vector<cv::Point2d>> &scan_lines, const cv::Mat &filtered_sinogram, cv::Mat &reconstruction)
+{
+    if (output_row >= IMAGE_SIZE  || output_row < 0 || output_col < 0 || output_col >= IMAGE_SIZE)
+    {
+        std::cout << "OOB! in backproject_sinogram_pixel" << std::endl;
+        return;
+    }
 
-// takes another argument to the final image to deposit TRUE COUNTS
-// the animation will just display "about" what it is, since it is going line by line
-// final version is fully corrected
-//
-// made it take all scan lines by reference so that the indexing makes more sense
-//
-void construct_sinogram_pixel(int &output_col, int &output_row, std::vector<std::vector<cv::Point2d>> &scan_lines, std::vector<std::vector<int>> &true_counts, cv::Mat &emitter_image, cv::Mat &noise_free_sinogram)
+    if (filtered_sinogram.type() != CV_32F || reconstruction.type() != CV_32F)
+    {
+        std::cout << "backproject_sinogram_pixel expects CV_32F mats" << std::endl;
+        return;
+    }
+
+    const float measurement = filtered_sinogram.at<float>(output_row, output_col);
+    const std::vector<cv::Point2d> &line = scan_lines[output_col];
+
+    for (int i = 0; i < static_cast<int>(line.size()); i++)
+    {
+        int ix = static_cast<int>(std::lround(line[i].x));
+        int iy = static_cast<int>(std::lround(line[i].y));
+        cv::Point2d point(ix, iy);
+        if (in_detector(point, reconstruction.cols, reconstruction.rows))
+        {
+            reconstruction.at<float>(iy, ix) += measurement;
+        }
+    }
+}
+
+void construct_sinogram_pixel(int &output_col, int &output_row, std::vector<std::vector<cv::Point2d>> &scan_lines, cv::Mat &true_counts_sinogram, cv::Mat &ideal_emitter_image, cv::Mat &noise_free_sinogram)
 {
     // noise_free_sinogram[output_row][output_col] = dot product of all_lines[output_col] with vector of 1s
     // here we just count them
@@ -200,9 +211,10 @@ void construct_sinogram_pixel(int &output_col, int &output_row, std::vector<std:
         // If point is in detector AND point is White (an emitting pixel)
         cv::Point2d point = cv::Point2d(ix, iy);
 
-        // if (in_circle(point, CENTER, RADIUS) && emitter_image.at<cv::Vec3b>(iy, ix) == cv::Vec3b(255, 255, 255))
+        // if (in_circle(point, CENTER, RADIUS) && ideal_emitter_image.at<uchar>(iy, ix) == 255)
+        //          uchar is compiler directive for this thing holds a byte (0 to 255)
         // rotated lines can leave the image so just use the in_detector more robust check, instead of just in_circle
-        if (in_detector(point, emitter_image.cols, emitter_image.rows) && emitter_image.at<cv::Vec3b>(iy, ix) == cv::Vec3b(255, 255, 255))
+        if (in_detector(point, ideal_emitter_image.cols, ideal_emitter_image.rows) && ideal_emitter_image.at<uchar>(iy, ix) == 255)
         {
             count += 1;
         }
@@ -211,26 +223,86 @@ void construct_sinogram_pixel(int &output_col, int &output_row, std::vector<std:
 
 
 
-    cv::Vec3b curr = noise_free_sinogram.at<cv::Vec3b>(output_row, output_col);
+    const int curr = static_cast<int>(noise_free_sinogram.at<uchar>(output_row, output_col));
 
-    if ((curr[0] + count >= 255) || (curr[1] + count >= 255) || (curr[2] + count >= 255))
+    if (curr + count >= 255)
     {
         std::cout << "A max count was reached!" << std::endl;
     }
 
-
-
-    true_counts[output_row][output_col] += count;
+    true_counts_sinogram.at<float>(output_row, output_col) += static_cast<float>(count);
 
     // this is the only place where the sinogram is updated
     // this is temporary for the scan to show line by line, the image will be normalized later
-    noise_free_sinogram.at<cv::Vec3b>(output_row, output_col) = cv::Vec3b(
-        std::min(curr[0] + count, 255),
-        std::min(curr[1] + count,255),
-        std::min(curr[2] + count,255)
-    );
+    noise_free_sinogram.at<uchar>(output_row, output_col) = static_cast<uchar>(std::min(curr + count, 255));
 
 
+}
+
+void populate_lines_with_member_points(std::vector<std::vector<cv::Point2d>> &all_lines, std::vector<std::vector<cv::Point2d>> &all_lines_initial_idx)
+{
+    /*
+        For each column vector, only add the indeces inside the circle
+
+        Fill all_lines and all_lines_initial_idx
+
+        J is outer dim here
+    */
+    for (int j = 0; j < IMAGE_SIZE; j++)
+    {
+        // loop rows
+        for (int i = 0; i < IMAGE_SIZE; i++)
+        {
+            // if the pixel matches target black, append it
+            // if (visual_line_integral_image.at<uchar>(i, j) == 0)
+            cv::Point2d point = cv::Point2d(j,i);
+            if (in_detector(point, IMAGE_SIZE, IMAGE_SIZE))
+            {
+                // store separate points (not pointers to same point)
+                all_lines[j].push_back(point);
+                all_lines_initial_idx[j].push_back(point);
+            }
+        }
+
+        // this actually deep copies 
+        // all_lines_initial_idx[j] = all_lines[j];
+    }
+}
+
+void populate_detector_region_with_random_emitters(cv::Mat &ideal_emitter_image, int &EMITTER_RADIUS, int &NUM_EMITTERS)
+{
+    // make emitters
+    /*
+        Build collection of lines that are in the shape of a circle
+
+        These will be rotated to collect the sinogram and visualized
+   
+        There are IMAGE_SIZE # of vectors, each representing a parallel line through the detector region.   
+        Each vector contains indeces of the line members. There are only as many members as teh circle is tall at that column.
+        The lines start vertical.
+
+        Having the indeces makes both visualization and sinogram easy.
+
+        all_lines_initial_idx are to rotate by total angle (so that only one round occurs) 
+    */
+
+    refresh_canvas(ideal_emitter_image); // makes outside detector gray, inside black
+    
+    srand(time(NULL));
+    for (int i = 0; i < NUM_EMITTERS; i++) 
+    {
+
+        // int x = rand() % IMAGE_SIZE;
+        // int y = rand() % IMAGE_SIZE;
+        cv::Point2d point = cv::Point2d(rand()%IMAGE_SIZE, rand()%IMAGE_SIZE);
+
+        while (!in_detector(point, IMAGE_SIZE - EMITTER_RADIUS, IMAGE_SIZE - EMITTER_RADIUS))
+        {
+            point = cv::Point2d(rand()%IMAGE_SIZE, rand()%IMAGE_SIZE);
+        }
+
+        cv::circle(ideal_emitter_image, point, EMITTER_RADIUS, cv::Scalar(255), -1);
+    }
 }
 
 
@@ -243,111 +315,28 @@ int main(int argc, char** argv)
     int EMITTER_RADIUS = std::stoi(argv[2]); 
 
 
-    /* 
-        Create Image of emitter, and refresh_canvas to clean / setup
+    // IMAGE 1 - EMITTER IMAGE
+    cv::Mat ideal_emitter_image(IMAGE_SIZE, IMAGE_SIZE, CV_8UC1, cv::Scalar(0));
+    populate_detector_region_with_random_emitters(ideal_emitter_image, EMITTER_RADIUS, NUM_EMITTERS);
 
-        refresh_canvas marks everything outside of a IMAGE_SIZE-diametered circle white
-    */
-    
-    cv::Mat emitter_image(IMAGE_SIZE, IMAGE_SIZE, CV_8UC3, cv::Scalar(0, 0, 0));
-    refresh_canvas(emitter_image);
+    // IMAGE 2 - VISUAL LINE INTEGRAL IMAGE
+    cv::Mat visual_line_integral_image(IMAGE_SIZE, IMAGE_SIZE, CV_8UC1, cv::Scalar(0));
 
-
-    /* 
-        10 random points used to place emitters in square
-
-        Only those in IMAGE_SIZE-diametered circle will be considered 
-            (emitters are same colour as background)
-    */
-    srand(time(NULL));
-    for (int i = 0; i < NUM_EMITTERS; i++) 
-    {
-        int x = rand() % IMAGE_SIZE;
-        int y = rand() % IMAGE_SIZE;
-        cv::circle(emitter_image, cv::Point(x, y), EMITTER_RADIUS, cv::Scalar(255, 255, 255), -1);
-    }
+    // IMAGE 3 - NOISE-FREE SINOGRAM (and true counts for normalization)
+    cv::Mat true_counts_sinogram(IMAGE_SIZE, IMAGE_SIZE, CV_32F, cv::Scalar(0.0f));
+    cv::Mat noise_free_sinogram(IMAGE_SIZE, IMAGE_SIZE, CV_8UC1, cv::Scalar(0));
 
 
-    /*
-        Setup for a Forward Projection to create a NOISE-FREE SINOGRAM
+    // LINES -> VECTORS OF POINTS
+    // PARALLEL LINES THROUGH THE DETECTOR REGION (a circle, see function)
+    std::vector<std::vector<cv::Point2d>> all_lines(IMAGE_SIZE);
+    std::vector<std::vector<cv::Point2d>> all_lines_initial_idx(IMAGE_SIZE);
+    populate_lines_with_member_points(all_lines, all_lines_initial_idx);
 
-        This will be used to compare to the empirical noisy sinogram from actual simulated annihilation events
-
-            visiual_line_integral_FP_BP  -> For visualization of parallel-line path integrals
-            noise_free_sinogram -> For actually holding the sinogram
-
-            the first is setup with the IMAGE_SIZE-diametered circle 
-            the second is a square 
-    
-    */
-    cv::Mat visual_line_integral_FP_BP(IMAGE_SIZE, IMAGE_SIZE, CV_8UC3, cv::Scalar(0, 0, 0));
-    refresh_canvas(visual_line_integral_FP_BP);
-
-    cv::Mat noise_free_sinogram(IMAGE_SIZE, IMAGE_SIZE, CV_8UC3, cv::Scalar(0, 0, 0));
-    
-    
-
-    /*
-        Build collection of lines that are in the shape of a circle
-
-        These will be rotated to collect the sinogram and visualized
-   
-        There are IMAGE_SIZE # of vectors, each representing a parallel line through the detector region.   
-        Each vector contains indeces of the line members. There are only as many members as teh circle is tall at that column.
-        The lines start vertical.
-
-        Having the indeces makes both visualization and sinogram easy.
-
-        all_base_lines are to reset, and add the updated global / UNROUNDED sums each iteration
-        this avoid error accumulating from rotating by small angles in high step counts
-
-    */
-
-
-    // we won't need all IMAGE_SIZE on inner dimension except for in the middle row
-    std::vector<std::vector<cv::Point2d>> all_lines(IMAGE_SIZE);//,std::vector<cv::Point2d>(IMAGE_SIZE));
-    std::vector<std::vector<cv::Point2d>> all_base_lines(IMAGE_SIZE);//,std::vector<cv::Point2d>(IMAGE_SIZE));
-    std::vector<std::vector<int>> true_counts(IMAGE_SIZE, std::vector<int>(IMAGE_SIZE, 0));
-
-
-
-
-    /*
-        For each column vector, only add the indeces inside the circle
-
-        Fill all_lines and all_base_lines
-    */
-
+ 
     bool animating = true;
 
-
-
-    // if (animating)
-    // {
-
-
-
-
-    // J IS OUTER DIM HERE
-    // fill lines and base lines
-    for (int j = 0; j < IMAGE_SIZE; j++)
-    {
-        // loop rows
-        for (int i = 0; i < IMAGE_SIZE; i++)
-        {
-            // if the pixel matches target black, append it
-            if (visual_line_integral_FP_BP.at<cv::Vec3b>(i, j) == cv::Vec3b(0, 0,0))
-            {
-                all_lines[j].push_back(cv::Point2d(j,i));
-            }
-        }
-
-        // this actually deep copies 
-        all_base_lines[j] = all_lines[j];
-    }
-
-    // }
-
+    // FORWARD PROJECTION WITH ANIMATION SWITCH
 
 
     /*
@@ -363,6 +352,19 @@ int main(int argc, char** argv)
     
     */
 
+
+
+    // 
+    // FORWARD PROJECTIOn
+    //
+
+    auto forward_project = [](cv::Mat &source_image, std::vector<std::vector<cv::Point2d>> vectors_to_dot, cv::Mat output_sinogram) -> void 
+    {
+
+    };
+
+    
+
     double Pi = 3.1415926535897932384626433832795;
     double total_angle = Pi;
     int steps = IMAGE_SIZE;
@@ -377,25 +379,25 @@ int main(int argc, char** argv)
 
 
     cv::Mat display;
-    cv::hconcat(std::vector<cv::Mat>{emitter_image, visual_line_integral_FP_BP, noise_free_sinogram}, display);
-    cv::namedWindow("Simulation", cv::WINDOW_AUTOSIZE);
+    // cv::hconcat(std::vector<cv::Mat>{ideal_emitter_image, visual_line_integral_image, noise_free_sinogram}, display);
+    // cv::namedWindow("Simulation", cv::WINDOW_AUTOSIZE);
 
     while(angle < total_angle)
     {
 
         // clear the image
-        refresh_canvas(visual_line_integral_FP_BP);
+        refresh_canvas(visual_line_integral_image);
 
         // draw the lines
         for (int j = 0; j < IMAGE_SIZE; j++)
         {
             if (j % 50 == 0 && animating)
-                draw_line(all_lines[j], visual_line_integral_FP_BP);
+                draw_line(all_lines[j], visual_line_integral_image);
 
             // noise_free_sinogram[output_row][output_col] = dot product of all_lines[j] with vector of 1s
-            construct_sinogram_pixel(j, output_row, all_lines, true_counts,emitter_image, noise_free_sinogram);
+            construct_sinogram_pixel(j, output_row, all_lines, true_counts_sinogram,ideal_emitter_image, noise_free_sinogram);
             // function signature
-            // construct_sinogram_pixel(int &output_col, int &output_row, std::vector<std::vector<cv::Point2d>> &scan_lines, std::vector<std::vector<cv::Point2d>> &true_counts, cv::Mat &emitter_image, cv::Mat &noise_free_sinogram)
+            // construct_sinogram_pixel(int &output_col, int &output_row, std::vector<std::vector<cv::Point2d>> &scan_lines, std::vector<std::vector<cv::Point2d>> &true_counts_sinogram, cv::Mat &ideal_emitter_image, cv::Mat &noise_free_sinogram)
         }
         output_row--;
 
@@ -403,7 +405,7 @@ int main(int argc, char** argv)
         // display the image
         if (animating)
         {
-            cv::hconcat(std::vector<cv::Mat>{emitter_image, visual_line_integral_FP_BP, noise_free_sinogram}, display);
+            cv::hconcat(std::vector<cv::Mat>{ideal_emitter_image, visual_line_integral_image, noise_free_sinogram}, display);
             cv::imshow("Noise Free Sinogram FP Simulation", display);
             cv::waitKey(1);
         }
@@ -421,55 +423,37 @@ int main(int argc, char** argv)
         {
             for (int i = 0; i < static_cast<int>(all_lines[j].size()); i++)
             {
-                all_lines[j][i] = all_base_lines[j][i];
+                all_lines[j][i] = all_lines_initial_idx[j][i];
                 err = rotate(all_lines[j][i], midpoint, angle);
             }
         }
 
     }
 
-   
-
-    // normalize the sinogram with true_counts -- get max and min counts, and map to 0 to 255
-    int max_count = 0;
-    // find max value in 2D array
-    for (const auto& row : true_counts) {
-        if (!row.empty()) {
-            auto it = std::max_element(row.begin(), row.end());
-            max_count = std::max(max_count, *it);
-        }
-    }
-
-    std::cout << "Max count: " << max_count << std::endl;
-
-    // now make everything max_count / 255 times SMALLER
-    // so mat[i][j] = mat[i][j] * 255 / max_count
-    // and just write it to the noise_free_sinogram
 
 
+    // Remap true_counts_sinogram (float) into display sinogram when counts exceed 8-bit range.
+    double min_count = 0.0;
+    double max_count = 0.0;
+    cv::minMaxLoc(true_counts_sinogram, &min_count, &max_count);
+    const int max_count_i = static_cast<int>(std::ceil(max_count));
 
-    if (max_count > 255)
-    {
-        int new_value =0;
-        cv::Vec3b curr;
-        for (int i = 0; i < IMAGE_SIZE; i++)
-        {
-            for (int j = 0; j < IMAGE_SIZE; j++)
-            {
-                curr = noise_free_sinogram.at<cv::Vec3b>(i, j);
-    
-                // 3 channel, but is grayscale anyways lol
-                new_value = floor(true_counts[i][j] * 255 / max_count);
-                if (new_value >= 254)
-                    std::cout << "New value: " << new_value << std::endl;
-                noise_free_sinogram.at<cv::Vec3b>(i, j) = cv::Vec3b(
-                    new_value,
-                    new_value,
-                   new_value 
-                );
-            }
-        }
-    }
+    std::cout << "Max count: " << max_count_i << std::endl;
+
+
+    //
+    // NEEED TO CHECk if THE BOOST TO 255 is GOOD OR NOT
+    //
+
+    // if (max_count_i > 255)
+    // {
+        cv::Mat normalized_f;
+        cv::normalize(true_counts_sinogram, normalized_f, 0.0, 255.0, cv::NORM_MINMAX);
+
+        cv::Mat normalized_u8;
+        normalized_f.convertTo(normalized_u8, CV_8U);
+        normalized_u8.copyTo(noise_free_sinogram);
+    // }
 
 
 
@@ -487,7 +471,7 @@ int main(int argc, char** argv)
     */
 
 
-    cv::hconcat(std::vector<cv::Mat>{emitter_image, visual_line_integral_FP_BP, noise_free_sinogram}, display);
+    cv::hconcat(std::vector<cv::Mat>{ideal_emitter_image, visual_line_integral_image, noise_free_sinogram}, display);
     cv::namedWindow("Final", cv::WINDOW_AUTOSIZE);
     cv::imshow("Final", display);
     cv::waitKey(2000);
@@ -512,20 +496,162 @@ int main(int argc, char** argv)
 
 
 
-    // HERE
-    // cv::Mat transformed_sinogram(IMAGE_SIZE, IMAGE_SIZE, CV_8UC3, cv::Scalar(0, 0, 0));
+    // DFT requires CV_32F/CV_64F with 1 or 2 channels.
+    cv::Mat sinogram_float;
+    noise_free_sinogram.convertTo(sinogram_float, CV_32F);
 
-    // // assumes noise_free_sinogram is image_size tall
-    // for (int i = 0; i < IMAGE_SIZE; i++)
-    // {
-    //     cv::dft(noise_free_sinogram.row(i), transformed_sinogram.row(i));
+    // Real-valued input -> complex-valued output (2 channels).
+    cv::Mat transformed_sinogram;
+    cv::dft(sinogram_float, transformed_sinogram, cv::DFT_COMPLEX_OUTPUT);
 
-    // }
+    // FFT shift: move DC from top-left to image center.
+    // C++ lambda, okay!
+    // Pretty much just for viewing
+    auto fft_shift = [](const cv::Mat &src) -> cv::Mat
+    {
+        if (src.empty() || src.cols < 2 || src.rows < 2)
+        {
+            return src.clone();
+        }
+
+        const int cx = src.cols / 2;
+        const int cy = src.rows / 2;
+
+        cv::Mat shifted_cols;
+        cv::hconcat(src.colRange(cx, src.cols), src.colRange(0, cx), shifted_cols);
+
+        cv::Mat shifted;
+        cv::vconcat(shifted_cols.rowRange(cy, src.rows), shifted_cols.rowRange(0, cy), shifted);
+        return shifted;
+    };
+    transformed_sinogram = fft_shift(transformed_sinogram);
+
+    // Ramp filter on each row
+    // multiply frequency bins by |k - center| (high-pass in frequency domain).
+    cv::Mat ramp_row = cv::Mat::zeros(1, transformed_sinogram.cols, CV_32F);
+    const int center_col = transformed_sinogram.cols / 2; // after fftshift
+    for (int k = 0; k < transformed_sinogram.cols; ++k) {
+        ramp_row.at<float>(0, k) = static_cast<float>(std::abs(k - center_col));
+    }
+
+    cv::Mat ramp_2d;
+    cv::repeat(ramp_row, transformed_sinogram.rows, 1, ramp_2d);
+
+    // Apply ramp to both complex channels explicitly (robust for channel/type rules).
+    std::vector<cv::Mat> dft_planes(2);
+    cv::split(transformed_sinogram, dft_planes); // [0]=real, [1]=imag
+    cv::multiply(dft_planes[0], ramp_2d, dft_planes[0]);
+    cv::multiply(dft_planes[1], ramp_2d, dft_planes[1]);
+
+    //for ifft later //                         
+    cv::Mat dft_complex_ramp;
+    cv::merge(dft_planes, dft_complex_ramp);
+
+    // Get |DFT| from complex, filtered output.
+
+    cv::Mat dft_magnitude;
+    cv::magnitude(dft_planes[0], dft_planes[1], dft_magnitude);
 
 
-    // cv::namedWindow("DFT", cv::WINDOW_AUTOSIZE);
-    // cv::imshow("DFT", transformed_sinogram);
-    // cv::waitKey(20000);
+
+    // Log scale + normalize for plotting/display.
+    cv::Mat dft_magnitude_log;
+    cv::log(dft_magnitude + cv::Scalar::all(1.0f), dft_magnitude_log);
+    // using log(1 + magnitude) to keep values finite(many pixels can be exactly zero)
+    // dynamic range compression that doesn't change underlying ferquency content (?)
+
+
+    // Open CV Linear remapping between zero and 255 (float)
+    cv::Mat dft_magnitude_display;
+    cv::normalize(dft_magnitude_log, dft_magnitude_display, 0, 255, cv::NORM_MINMAX);
+    // quantized to 8-bit unsigned integers
+    dft_magnitude_display.convertTo(dft_magnitude_display, CV_8U);
+
+    // display da goods
+    cv::namedWindow("DFT Magnitude", cv::WINDOW_AUTOSIZE);
+    cv::imshow("DFT Magnitude", dft_magnitude_display);
+    cv::waitKey(20000);
+
+
+    // Inverse FFT on filtered, fft-shifted spectrum.
+    // must unshift, as DC is expected at [0,0]
+    // and will unwind correctly to make the row we must backproject
+    cv::Mat dft_complex_unshifted = fft_shift(dft_complex_ramp);
+
+    cv::Mat filtered_sinogram_float;
+    cv::idft(dft_complex_unshifted, filtered_sinogram_float, cv::DFT_REAL_OUTPUT | cv::DFT_SCALE);
+
+
+
+    cv::Mat filtered_sinogram_display;
+    cv::normalize(filtered_sinogram_float, filtered_sinogram_display, 0, 255, cv::NORM_MINMAX);
+    filtered_sinogram_display.convertTo(filtered_sinogram_display, CV_8U);
+
+    cv::namedWindow("Filtered Sinogram (iDFT)", cv::WINDOW_AUTOSIZE);
+    cv::imshow("Filtered Sinogram (iDFT)", filtered_sinogram_display);
+    cv::waitKey(20000);
+
+
+
+    // Now, backproject
+    steps = IMAGE_SIZE;
+    angle_step = total_angle / steps;
+    angle = 0;
+    output_row = IMAGE_SIZE - 1;
+    cv::Mat reconstruction_float = cv::Mat::zeros(IMAGE_SIZE, IMAGE_SIZE, CV_32F);
+
+
+
+    while(angle < total_angle)
+    {
+
+        // draw the lines
+        for (int j = 0; j < IMAGE_SIZE; j++)
+        {
+            backproject_sinogram_pixel(j, output_row, all_lines, filtered_sinogram_float, reconstruction_float);
+        }
+        output_row--;
+
+
+        // display the image
+        // if (animating)
+        // {
+        //     cv::hconcat(std::vector<cv::Mat>{ideal_emitter_image, visual_line_integral_image, noise_free_sinogram}, display);
+        //     cv::imshow("Noise Free Sinogram FP Simulation", display);
+        //     cv::waitKey(1);
+        // }
+
+
+
+        angle += angle_step;
+
+
+        // Reset the lines from last iteration
+        // Rotate every point by new total angle
+
+
+        for (int j = 0; j < IMAGE_SIZE; j++)
+        {
+            for (int i = 0; i < static_cast<int>(all_lines[j].size()); i++)
+            {
+                all_lines[j][i] = all_lines_initial_idx[j][i];
+                err = rotate(all_lines[j][i], midpoint, angle);
+            }
+        }
+
+    }
+
+    cv::Mat reconstruction_display;
+    cv::normalize(reconstruction_float, reconstruction_display, 0, 255, cv::NORM_MINMAX);
+    reconstruction_display.convertTo(reconstruction_display, CV_8U);
+    cv::namedWindow("Backprojection (Filtered)", cv::WINDOW_AUTOSIZE);
+    cv::imshow("Backprojection (Filtered)", reconstruction_display);
+    cv::waitKey(20000);
+
+
+
+
+
     //     1D FT row
     //     row.RampFilter (multiply by abs(index), middle is zero)
     //     row.inverseFFT

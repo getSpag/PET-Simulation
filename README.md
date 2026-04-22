@@ -13,45 +13,40 @@ Here is a gif of some of my results. Please enjoy. This is a WIP!
 
 *Left: Random Emitters | Middle: (a few) Forward Projection Scan Lines for Integrating | Right: Sinogram*
 
+APRIL 21 2026
+- Still goint through copmmenting FBP implementation, cleaning (making forward projection a function)
+- Is normalizing to 0 to 255 any good if max count was less than 255? See normalization of backprojection
+
+
+APRIL 19&20 2026
+- Back projection pretty much imlemented, it works
+
 UPDATE APRIL 9 2026
 - Started preparing for FBP integration with looking at video series by Andrew Reader (see TODO)
 
-UPDATE APRIL 8 2026
 
+UPDATE APRIL 8 2026
 - Changed some names
 - Changed out of bounds area colour to gray (emitters outside this region still not coulored over, but not used either)
 - Updated sinogram to keep track of true counts, instead of maxing out at 255, so that the final image is remapped from [0, max_count] -> [0, 255], only iff max_count > 255. 
-  - Not sure if best. Will have to implement FBP
+        Not sure if best. Will have to implement FBP
 - Increased IMAGE_SIZE, tested some higher counts
-  - LAST TEST: ./build/PET 500 10, IMAGE_SIZE 1024
-  - Better IMAGE_SIZE 500 because frame skipping not implemented (waiting each IMAGE_SIZE of pixels rows drawn of sinogram, so animation is quite slow for high counts)
+    - LAST TEST: ./build/PET 500 10, IMAGE_SIZE 1024
+    Better IMAGE_SIZE 500 because frame skipping not implemented (waiting each IMAGE_SIZE of pixels rows drawn of sinogram, so animation is quite slow for high counts)
+
+
 
 TODO
-
-- Implement FPB to test your sinogram
-    IP basic steps Andrew Reader
-
-  '''
-
-      // basic steps from Andrew Reader, equivalent to 2D transform method
-      // (take advantage of linearity, use 1D transforms )
-      // projecting = vector(IMAGE_SIZE^2)
-      // angle =0
-      // angle_increment = increment
-      // for (auto& row:img)
-      //     1D FT row
-      //     row.RampFilter (multiply by abs(index), middle is zero)
-      //     row.inverseFFT
-      //     set_projecting(projecting, row)
-      //     angle+=increment
-      //     back_project(projecting, angle, image)
-  '''
-    
-- Add axes
-- Colour over OOB emitters
+- Commenting / cleaning
+- Is normalizing to 0 to 255 any good if max count was less than 255?
+- Verify FPB
+- Colour over OOB emitters DONE, BETTER SOLUTION IN populate_detector_region_with_random_emitters
 - Other quality of life checks
-  - understanding the even circle centers (2x2 or 4x4 for example), should be okay but just to be sure
-- arbitrary input images
+    understanding the even circle centers (2x2 or 4x4 for example)
+    arbitrary input images
+    FFTSHIFt only do when animating / showing the picture
+- parallel? idk think later
+
 
 "Utilized C++ and OpenCV to animate the Forward Projection or Radon Transform of a noiseless sinogram based on random emitter locations. This will eventually be compared with a noisy sinogram from simulated annihilation events, in the context of their reconstruction via Filtered Back Projection."
 
