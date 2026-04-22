@@ -24,6 +24,11 @@ int RADIUS = floor(IMAGE_SIZE / 2);
 
 /*
 
+APRIL 22, 2026
+- Fixed weird seg fault that occurred intermittently on runs from terminal, but not debugger (indexing issue)
+- Made weird assert for image_cols == image_rows, temporary for now in in_circle (assumes image is square for the circle)
+
+
 APRIL 21 2026
 - Still goint through copmmenting FBP implementation, cleaning (making forward projection a function)
 - Is normalizing to 0 to 255 any good if max count was less than 255?
@@ -79,9 +84,11 @@ bool in_circle(cv::Point2d &point, cv::Point2d &center, int radius)
 // the cols and rows are basically a rotation check (points can rotate out)
 bool in_detector(cv::Point2d &point, int image_cols, int image_rows)
 {
+    // temporary 
+    assert(image_cols == image_rows);
     // must be in / on the circle to be true
     // Is a more robust check than in_circle (rectangle check and odd sizes?)
-    if (point.x < 0 || point.x >= image_cols || point.y < 0 || point.y >= image_rows || !in_circle(point, CENTER, floor(IMAGE_SIZE/2)))
+    if (point.x < 0 || point.x >= image_cols || point.y < 0 || point.y >= image_rows || !in_circle(point, CENTER, floor(image_cols/2)))
     {
         return false;
     }
@@ -198,14 +205,14 @@ void construct_sinogram_pixel(int &output_col, int &output_row, std::vector<std:
     // Count along the scan line, and bucket the count to this line's cell
 
     int count = 0;
-    for (int i = 0; i < static_cast<int>(scan_lines[output_col - 1].size()); i++)
+    for (int i = 0; i < static_cast<int>(scan_lines[output_col].size()); i++)
     {
 
         // DO NOT FORGET TO ROUND THESE HERE TOO
         // FINAL ROUND
 
-        int ix = static_cast<int>(std::lround(scan_lines[output_col - 1][i].x));
-        int iy = static_cast<int>(std::lround(scan_lines[output_col - 1][i].y));
+        int ix = static_cast<int>(std::lround(scan_lines[output_col][i].x));
+        int iy = static_cast<int>(std::lround(scan_lines[output_col][i].y));
 
 
         // If point is in detector AND point is White (an emitting pixel)
@@ -296,7 +303,7 @@ void populate_detector_region_with_random_emitters(cv::Mat &ideal_emitter_image,
         // int y = rand() % IMAGE_SIZE;
         cv::Point2d point = cv::Point2d(rand()%IMAGE_SIZE, rand()%IMAGE_SIZE);
 
-        while (!in_detector(point, IMAGE_SIZE - EMITTER_RADIUS, IMAGE_SIZE - EMITTER_RADIUS))
+        while (!in_detector(point, IMAGE_SIZE - 2*EMITTER_RADIUS, IMAGE_SIZE - 2*EMITTER_RADIUS))
         {
             point = cv::Point2d(rand()%IMAGE_SIZE, rand()%IMAGE_SIZE);
         }
@@ -352,7 +359,16 @@ int main(int argc, char** argv)
     
     */
 
-
+    // double Pi = 3.1415926535897932384626433832795;
+    double pi = std::acos(-1);
+    double total_angle = pi;
+    
+    int steps = IMAGE_SIZE;
+    double angle_step = total_angle / steps;
+    double angle = 0;
+    cv::Point2d midpoint = cv::Point2d(floor(IMAGE_SIZE/2),floor(IMAGE_SIZE/2));
+    int err = 0;
+    int output_row = IMAGE_SIZE - 1;
 
     // 
     // FORWARD PROJECTIOn
@@ -365,14 +381,7 @@ int main(int argc, char** argv)
 
     
 
-    double Pi = 3.1415926535897932384626433832795;
-    double total_angle = Pi;
-    int steps = IMAGE_SIZE;
-    double angle_step = total_angle / steps;
-    double angle = 0;
-    cv::Point2d midpoint = cv::Point2d(floor(IMAGE_SIZE/2),floor(IMAGE_SIZE/2));
-    int err = 0;
-    int output_row = IMAGE_SIZE - 1;
+    
 
     double t1 = (double)clock()/(double)CLOCKS_PER_SEC;
     std::cout << "Timing started." << std::endl;
