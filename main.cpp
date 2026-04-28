@@ -9,7 +9,9 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
+#include <cstdlib>
 #include <iostream>
+#include <string>
 #include <vector>
 // #include <ranges>
 
@@ -17,12 +19,26 @@
 int IMAGE_SIZE = 250; //500; //1024;
 cv::Point2d CENTER = cv::Point2d(floor(IMAGE_SIZE/2)-1,floor(IMAGE_SIZE/2)-1);
 int RADIUS = floor(IMAGE_SIZE / 2);
+bool USE_LOG_SCALE_FOR_DISPLAY = false;
+bool ANIMATING = true;
+
+
 // int EMITTER_RADIUS = 40;
 
 // CMDLINE ARGS -- ./build/PET <emitter count> <emitter radius>
 //
 
 /*
+
+PROMPT
+can you write a method to write the files to the home directory? SPecifically for the final forward projection AFTER NORMALIZATION and for the backprojection, normalized AND unnormalized
+
+APRIL 24, 2026
+- I prefer normalization to log scale
+
+APRIL 23, 2026
+- Investigated normalization regardless of max count
+- Log scale for image dispay instead?
 
 APRIL 22, 2026
 - Fixed weird seg fault that occurred intermittently on runs from terminal, but not debugger (indexing issue)
@@ -55,12 +71,13 @@ UPDATE APRIL 8 2026
 TODO
 - Commenting / cleaning
 - Is normalizing to 0 to 255 any good if max count was less than 255?
+    Does not seem to make a difference
 - Verify FPB
 - Colour over OOB emitters DONE, BETTER SOLUTION IN populate_detector_region_with_random_emitters
 - Other quality of life checks
     understanding the even circle centers (2x2 or 4x4 for example)
     arbitrary input images
-    FFTSHIFt only do when animating / showing the picture
+    FFTSHIFt only do when ANIMATING / showing the picture
 - parallel? idk think later
 
 
@@ -112,6 +129,47 @@ int rotate(cv::Point2d &toRotate, cv::Point2d &about, double angle)
 
     // this was in case of errors
     return 0;
+}
+
+void write_image_to_project_dir(const char *filename, const cv::Mat &image)
+{
+    if (filename == nullptr || image.empty())
+    {
+        std::cerr << "write_image_to_project_dir: invalid filename or empty image" << std::endl;
+        return;
+    }
+
+    const std::string project_dir = "/Users/espagrud/code/c-cpp/March 2026/PET-project/";
+    const std::string full_path = project_dir + filename;
+    if (!cv::imwrite(full_path, image))
+    {
+        std::cerr << "Failed to write image: " << full_path << std::endl;
+        return;
+    }
+    std::cout << "Wrote image: " << full_path << std::endl;
+}
+
+cv::Mat normalize_for_display_u8(const cv::Mat &src, bool use_log_scale)
+{
+    if (src.empty())
+        return cv::Mat();
+
+    cv::Mat src_f32;
+    src.convertTo(src_f32, CV_32F);
+
+    cv::Mat to_normalize = src_f32;
+    if (use_log_scale)
+    {
+        // Use magnitude before log so negative values display robustly too.
+        cv::Mat abs_src;
+        cv::absdiff(src_f32, cv::Scalar::all(0.0f), abs_src);
+        cv::log(abs_src + cv::Scalar::all(1.0f), to_normalize);
+    }
+
+    cv::Mat out_u8;
+    cv::normalize(to_normalize, out_u8, 0, 255, cv::NORM_MINMAX);
+    out_u8.convertTo(out_u8, CV_8U);
+    return out_u8;
 }
 
 void refresh_canvas(cv::Mat &image)
@@ -192,6 +250,7 @@ void backproject_sinogram_pixel(int output_col, int output_row, const std::vecto
 void construct_sinogram_pixel(int &output_col, int &output_row, std::vector<std::vector<cv::Point2d>> &scan_lines, cv::Mat &true_counts_sinogram, cv::Mat &ideal_emitter_image, cv::Mat &noise_free_sinogram)
 {
     // noise_free_sinogram[output_row][output_col] = dot product of all_lines[output_col] with vector of 1s
+    // this is a forward projection
     // here we just count them
 
     if (output_row >= IMAGE_SIZE  || output_row < 0 || output_col < 0 || output_col >= IMAGE_SIZE)
@@ -253,7 +312,7 @@ void populate_lines_with_member_points(std::vector<std::vector<cv::Point2d>> &al
 
         Fill all_lines and all_lines_initial_idx
 
-        J is outer dim here
+        j is outer dim here
     */
     for (int j = 0; j < IMAGE_SIZE; j++)
     {
@@ -341,7 +400,7 @@ int main(int argc, char** argv)
     populate_lines_with_member_points(all_lines, all_lines_initial_idx);
 
  
-    bool animating = true;
+
 
     // FORWARD PROJECTION WITH ANIMATION SWITCH
 
@@ -362,7 +421,7 @@ int main(int argc, char** argv)
     // double Pi = 3.1415926535897932384626433832795;
     double pi = std::acos(-1);
     double total_angle = pi;
-    
+
     int steps = IMAGE_SIZE;
     double angle_step = total_angle / steps;
     double angle = 0;
@@ -374,10 +433,10 @@ int main(int argc, char** argv)
     // FORWARD PROJECTIOn
     //
 
-    auto forward_project = [](cv::Mat &source_image, std::vector<std::vector<cv::Point2d>> vectors_to_dot, cv::Mat output_sinogram) -> void 
-    {
+    // auto forward_project = [](cv::Mat &ideal_emitter_image, std::vector<std::vector<cv::Point2d>> visual_line_integral_image, cv::Mat noise_free_sinogram, bool ANIMATING) -> void 
+    // {
 
-    };
+    // };
 
     
 
@@ -400,7 +459,7 @@ int main(int argc, char** argv)
         // draw the lines
         for (int j = 0; j < IMAGE_SIZE; j++)
         {
-            if (j % 50 == 0 && animating)
+            if (j % 50 == 0 && ANIMATING)
                 draw_line(all_lines[j], visual_line_integral_image);
 
             // noise_free_sinogram[output_row][output_col] = dot product of all_lines[j] with vector of 1s
@@ -412,7 +471,7 @@ int main(int argc, char** argv)
 
 
         // display the image
-        if (animating)
+        if (ANIMATING)
         {
             cv::hconcat(std::vector<cv::Mat>{ideal_emitter_image, visual_line_integral_image, noise_free_sinogram}, display);
             cv::imshow("Noise Free Sinogram FP Simulation", display);
@@ -454,16 +513,18 @@ int main(int argc, char** argv)
     // NEEED TO CHECk if THE BOOST TO 255 is GOOD OR NOT
     //
 
-    // if (max_count_i > 255)
-    // {
+    if (max_count_i > 255)
+    {
         cv::Mat normalized_f;
         cv::normalize(true_counts_sinogram, normalized_f, 0.0, 255.0, cv::NORM_MINMAX);
 
         cv::Mat normalized_u8;
         normalized_f.convertTo(normalized_u8, CV_8U);
         normalized_u8.copyTo(noise_free_sinogram);
-    // }
 
+    }
+    cv::Mat forward_projection_display = normalize_for_display_u8(true_counts_sinogram, USE_LOG_SCALE_FOR_DISPLAY);
+    write_image_to_project_dir("forward_projection_normalized.png", forward_projection_display);
 
 
 
@@ -480,7 +541,7 @@ int main(int argc, char** argv)
     */
 
 
-    cv::hconcat(std::vector<cv::Mat>{ideal_emitter_image, visual_line_integral_image, noise_free_sinogram}, display);
+    cv::hconcat(std::vector<cv::Mat>{ideal_emitter_image, visual_line_integral_image, forward_projection_display}, display);
     cv::namedWindow("Final", cv::WINDOW_AUTOSIZE);
     cv::imshow("Final", display);
     cv::waitKey(2000);
@@ -489,6 +550,13 @@ int main(int argc, char** argv)
 
     // basic steps from Andrew Reader, equivalent to 2D transform method
     // (take advantage of linearity, use 1D transforms )
+    // for row in sinogram_rows 
+    //     1D FT row
+    //     row.RampFilter (multiply by abs(index), middle is zero)
+    //     row.inverseFFT
+    //     set_projecting(projecting, row)
+    //     angle+=increment
+    //     back_project(projecting, angle, image)
 
 
 
@@ -563,18 +631,7 @@ int main(int argc, char** argv)
 
 
 
-    // Log scale + normalize for plotting/display.
-    cv::Mat dft_magnitude_log;
-    cv::log(dft_magnitude + cv::Scalar::all(1.0f), dft_magnitude_log);
-    // using log(1 + magnitude) to keep values finite(many pixels can be exactly zero)
-    // dynamic range compression that doesn't change underlying ferquency content (?)
-
-
-    // Open CV Linear remapping between zero and 255 (float)
-    cv::Mat dft_magnitude_display;
-    cv::normalize(dft_magnitude_log, dft_magnitude_display, 0, 255, cv::NORM_MINMAX);
-    // quantized to 8-bit unsigned integers
-    dft_magnitude_display.convertTo(dft_magnitude_display, CV_8U);
+    cv::Mat dft_magnitude_display = normalize_for_display_u8(dft_magnitude, USE_LOG_SCALE_FOR_DISPLAY);
 
     // display da goods
     cv::namedWindow("DFT Magnitude", cv::WINDOW_AUTOSIZE);
@@ -592,24 +649,22 @@ int main(int argc, char** argv)
 
 
 
-    cv::Mat filtered_sinogram_display;
-    cv::normalize(filtered_sinogram_float, filtered_sinogram_display, 0, 255, cv::NORM_MINMAX);
-    filtered_sinogram_display.convertTo(filtered_sinogram_display, CV_8U);
+    cv::Mat filtered_sinogram_display = normalize_for_display_u8(filtered_sinogram_float, USE_LOG_SCALE_FOR_DISPLAY);
 
     cv::namedWindow("Filtered Sinogram (iDFT)", cv::WINDOW_AUTOSIZE);
     cv::imshow("Filtered Sinogram (iDFT)", filtered_sinogram_display);
     cv::waitKey(20000);
 
 
+    //
+    // BACKPROJECTION
+    //
 
-    // Now, backproject
     steps = IMAGE_SIZE;
     angle_step = total_angle / steps;
     angle = 0;
     output_row = IMAGE_SIZE - 1;
     cv::Mat reconstruction_float = cv::Mat::zeros(IMAGE_SIZE, IMAGE_SIZE, CV_32F);
-
-
 
     while(angle < total_angle)
     {
@@ -623,7 +678,7 @@ int main(int argc, char** argv)
 
 
         // display the image
-        // if (animating)
+        // if (ANIMATING)
         // {
         //     cv::hconcat(std::vector<cv::Mat>{ideal_emitter_image, visual_line_integral_image, noise_free_sinogram}, display);
         //     cv::imshow("Noise Free Sinogram FP Simulation", display);
@@ -650,9 +705,9 @@ int main(int argc, char** argv)
 
     }
 
-    cv::Mat reconstruction_display;
-    cv::normalize(reconstruction_float, reconstruction_display, 0, 255, cv::NORM_MINMAX);
-    reconstruction_display.convertTo(reconstruction_display, CV_8U);
+    cv::Mat reconstruction_display = normalize_for_display_u8(reconstruction_float, USE_LOG_SCALE_FOR_DISPLAY);
+    write_image_to_project_dir("backprojection_unnormalized.png", reconstruction_float);
+    write_image_to_project_dir("backprojection_normalized.png", reconstruction_display);
     cv::namedWindow("Backprojection (Filtered)", cv::WINDOW_AUTOSIZE);
     cv::imshow("Backprojection (Filtered)", reconstruction_display);
     cv::waitKey(20000);
@@ -661,12 +716,7 @@ int main(int argc, char** argv)
 
 
 
-    //     1D FT row
-    //     row.RampFilter (multiply by abs(index), middle is zero)
-    //     row.inverseFFT
-    //     set_projecting(projecting, row)
-    //     angle+=increment
-    //     back_project(projecting, angle, image)
+
 
 
 
