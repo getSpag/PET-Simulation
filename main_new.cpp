@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdint>
 #include <exception>
+#include <filesystem>
 #include <iostream>
 #include <random>
 #include <stdexcept>
@@ -14,7 +15,6 @@ namespace pet {
 namespace {
 
 constexpr int kDefaultImageSize = 250;
-constexpr const char *kDefaultOutputDir = "/Users/espagrud/code/c-cpp/March 2026/PET-project/";
 
 struct Config {
     int image_size = kDefaultImageSize;
@@ -24,7 +24,7 @@ struct Config {
     bool show_windows = true;
     bool use_log_display = false;
     std::uint32_t random_seed = std::random_device{}();
-    std::string output_dir = kDefaultOutputDir;
+    std::string output_dir; // default: current working directory
 };
 
 struct Geometry {
@@ -46,7 +46,7 @@ void print_usage(const char *program_name)
         << "  --show <0|1>          Show OpenCV windows. Default: 1\n"
         << "  --log-display <0|1>   Use log(1 + abs(x)) before display normalization. Default: 0\n"
         << "  --seed <uint>         Random seed. Default: random_device\n"
-        << "  --out <dir>           Output directory. Default: " << kDefaultOutputDir << "\n";
+        << "  --out <dir>           Output directory. Default: current working directory\n";
 }
 
 int parse_int(const std::string &value, const std::string &name)
@@ -113,9 +113,6 @@ Config parse_config(int argc, char **argv)
             config.random_seed = parse_u32(require_value(option), option);
         } else if (option == "--out") {
             config.output_dir = require_value(option);
-            if (!config.output_dir.empty() && config.output_dir.back() != '/') {
-                config.output_dir.push_back('/');
-            }
         } else {
             throw std::invalid_argument("Unknown option: " + option);
         }
@@ -297,7 +294,10 @@ void write_image(const Config &config, const std::string &filename, const cv::Ma
         return;
     }
 
-    const std::string path = config.output_dir + filename;
+    const std::filesystem::path full_path = config.output_dir.empty()
+        ? std::filesystem::path(filename)
+        : std::filesystem::path(config.output_dir) / filename;
+    const std::string path = full_path.string();
     if (!cv::imwrite(path, image)) {
         throw std::runtime_error("Failed to write image: " + path);
     }
