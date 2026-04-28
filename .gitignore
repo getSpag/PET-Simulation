@@ -1,2 +1,6 @@
 plan.txt
 build
+.gitignore
+.vscode
+.cache
+255
