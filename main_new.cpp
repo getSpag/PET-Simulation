@@ -1,3 +1,5 @@
+// What are teh failure messages at the start of running?
+
 #include <opencv2/core.hpp>
 #include <opencv2/opencv.hpp>
 
