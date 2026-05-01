@@ -392,7 +392,6 @@ int main(int argc, char** argv)
     cv::Mat true_counts_sinogram(IMAGE_SIZE, IMAGE_SIZE, CV_32F, cv::Scalar(0.0f));
     cv::Mat noise_free_sinogram(IMAGE_SIZE, IMAGE_SIZE, CV_8UC1, cv::Scalar(0));
 
-
     // LINES -> VECTORS OF POINTS
     // PARALLEL LINES THROUGH THE DETECTOR REGION (a circle, see function)
     std::vector<std::vector<cv::Point2d>> all_lines(IMAGE_SIZE);

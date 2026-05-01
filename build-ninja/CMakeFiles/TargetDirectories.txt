@@ -1,0 +1,4 @@
+C:/Users/spagr/OneDrive/Documents/Code/PET-Simulation/build-ninja/CMakeFiles/PET.dir
+C:/Users/spagr/OneDrive/Documents/Code/PET-Simulation/build-ninja/CMakeFiles/PET_new.dir
+C:/Users/spagr/OneDrive/Documents/Code/PET-Simulation/build-ninja/CMakeFiles/edit_cache.dir
+C:/Users/spagr/OneDrive/Documents/Code/PET-Simulation/build-ninja/CMakeFiles/rebuild_cache.dir
