@@ -1,4 +1,0 @@
-WINDOWS
-
-install OpenCV
-set the right compiler
