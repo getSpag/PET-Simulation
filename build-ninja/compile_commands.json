@@ -1,0 +1,14 @@
+[
+{
+  "directory": "C:/Users/spagr/OneDrive/Documents/Code/PET-Simulation/build-ninja",
+  "command": "C:\\PROGRA~2\\MICROS~2\\2022\\BUILDT~1\\VC\\Tools\\MSVC\\1444~1.352\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -IC:\\Users\\spagr\\OneDrive\\Documents\\Code\\PET-Simulation -external:IC:\\opencv\\build\\include -external:W0 /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd /permissive- /FoCMakeFiles\\PET.dir\\main.cpp.obj /FdCMakeFiles\\PET.dir\\ /FS -c C:\\Users\\spagr\\OneDrive\\Documents\\Code\\PET-Simulation\\main.cpp",
+  "file": "C:\\Users\\spagr\\OneDrive\\Documents\\Code\\PET-Simulation\\main.cpp",
+  "output": "CMakeFiles\\PET.dir\\main.cpp.obj"
+},
+{
+  "directory": "C:/Users/spagr/OneDrive/Documents/Code/PET-Simulation/build-ninja",
+  "command": "C:\\PROGRA~2\\MICROS~2\\2022\\BUILDT~1\\VC\\Tools\\MSVC\\1444~1.352\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -IC:\\Users\\spagr\\OneDrive\\Documents\\Code\\PET-Simulation -external:IC:\\opencv\\build\\include -external:W0 /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd /permissive- /FoCMakeFiles\\PET_new.dir\\main_new.cpp.obj /FdCMakeFiles\\PET_new.dir\\ /FS -c C:\\Users\\spagr\\OneDrive\\Documents\\Code\\PET-Simulation\\main_new.cpp",
+  "file": "C:\\Users\\spagr\\OneDrive\\Documents\\Code\\PET-Simulation\\main_new.cpp",
+  "output": "CMakeFiles\\PET_new.dir\\main_new.cpp.obj"
+}
+]
