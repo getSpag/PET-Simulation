@@ -10,6 +10,7 @@
 #include <cassert>
 #include <cmath>
 #include <cstdlib>
+#include <filesystem>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -139,14 +140,22 @@ void write_image_to_project_dir(const char *filename, const cv::Mat &image)
         return;
     }
 
-    const std::string project_dir = "/Users/espagrud/code/c-cpp/March 2026/PET-project/";
-    const std::string full_path = project_dir + filename;
-    if (!cv::imwrite(full_path, image))
+    const std::filesystem::path output_dir = "/Users/espagrud/code/c-cpp/March 2026/PET-project/photo-dump";
+    std::error_code ec;
+    std::filesystem::create_directories(output_dir, ec);
+    if (ec)
     {
-        std::cerr << "Failed to write image: " << full_path << std::endl;
+        std::cerr << "Failed to create output directory: " << output_dir << " (" << ec.message() << ")" << std::endl;
         return;
     }
-    std::cout << "Wrote image: " << full_path << std::endl;
+
+    const std::filesystem::path full_path = output_dir / filename;
+    if (!cv::imwrite(full_path.string(), image))
+    {
+        std::cerr << "Failed to write image: " << full_path.string() << std::endl;
+        return;
+    }
+    std::cout << "Wrote image: " << full_path.string() << std::endl;
 }
 
 cv::Mat normalize_for_display_u8(const cv::Mat &src, bool use_log_scale)

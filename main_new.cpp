@@ -24,7 +24,7 @@ struct Config {
     bool show_windows = true;
     bool use_log_display = false;
     std::uint32_t random_seed = std::random_device{}();
-    std::string output_dir; // default: current working directory
+    std::string output_dir = "/Users/espagrud/code/c-cpp/March 2026/PET-project/photo-dump";
 };
 
 struct Geometry {
@@ -46,7 +46,7 @@ void print_usage(const char *program_name)
         << "  --show <0|1>          Show OpenCV windows. Default: 1\n"
         << "  --log-display <0|1>   Use log(1 + abs(x)) before display normalization. Default: 0\n"
         << "  --seed <uint>         Random seed. Default: random_device\n"
-        << "  --out <dir>           Output directory. Default: current working directory\n";
+        << "  --out <dir>           Output directory. Default: PET-project/photo-dump\n";
 }
 
 int parse_int(const std::string &value, const std::string &name)
@@ -294,9 +294,17 @@ void write_image(const Config &config, const std::string &filename, const cv::Ma
         return;
     }
 
-    const std::filesystem::path full_path = config.output_dir.empty()
-        ? std::filesystem::path(filename)
-        : std::filesystem::path(config.output_dir) / filename;
+    const std::filesystem::path output_dir = config.output_dir.empty()
+        ? std::filesystem::path("/Users/espagrud/code/c-cpp/March 2026/PET-project/photo-dump")
+        : std::filesystem::path(config.output_dir);
+
+    std::error_code ec;
+    std::filesystem::create_directories(output_dir, ec);
+    if (ec) {
+        throw std::runtime_error("Failed to create output directory: " + output_dir.string() + " (" + ec.message() + ")");
+    }
+
+    const std::filesystem::path full_path = output_dir / filename;
     const std::string path = full_path.string();
     if (!cv::imwrite(path, image)) {
         throw std::runtime_error("Failed to write image: " + path);
