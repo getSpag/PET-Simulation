@@ -1,11 +1,13 @@
 
-#include <opencv2/core/types.hpp>
-#include <opencv2/highgui.hpp>
+// What are teh failure messages at the start of running
+
+// #include <opencv2/core/types.hpp>
+// #include <opencv2/highgui.hpp>
 #include <opencv2/core.hpp>
 #include <opencv2/opencv.hpp>
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/imgcodecs/imgcodecs.hpp>
+// #include <opencv2/highgui/highgui.hpp>
+// #include <opencv2/imgproc/imgproc.hpp>
+// #include <opencv2/imgcodecs/imgcodecs.hpp>
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -140,12 +142,13 @@ void write_image_to_project_dir(const char *filename, const cv::Mat &image)
         return;
     }
 
-    const std::filesystem::path output_dir = "/Users/espagrud/code/c-cpp/March 2026/PET-project/photo-dump";
+    const std::filesystem::path output_dir = "photo-dump";
     std::error_code ec;
     std::filesystem::create_directories(output_dir, ec);
     if (ec)
     {
-        std::cerr << "Failed to create output directory: " << output_dir << " (" << ec.message() << ")" << std::endl;
+        std::cerr << "Failed to create output directory: " << output_dir.string()
+                  << " (" << ec.message() << ")" << std::endl;
         return;
     }
 
