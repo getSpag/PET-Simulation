@@ -1,5 +1,5 @@
 plan.txt
-build
+build-ninja
 .gitignore
 .vscode
 .cache
