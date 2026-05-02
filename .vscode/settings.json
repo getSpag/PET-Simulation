@@ -1,0 +1,23 @@
+{
+  /*
+  configure means CMAKE:
+    detects compiler/toolchain
+    resolves find_package(...)
+    writes/updates build files and cache in your build directory
+  */
+  "cmake.configureOnOpen": true,
+  "cmake.generator": "Ninja",
+  "cmake.buildDirectory": "${workspaceFolder}/build-ninja",// can this be cross platform
+  // "cmake.cmakePath": "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe",
+  // instead of above, set Cmake on your PATH so it's platform independent
+  "cmake.configureSettings": {
+    "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+  },
+
+  "clangd.enabled": true,
+  "clangd.arguments": [
+    "--compile-commands-dir=${workspaceFolder}/build-ninja",
+    "--query-driver=C:/Program Files/Microsoft Visual Studio/**/cl.exe",
+    "--header-insertion=never"
+  ]
+}

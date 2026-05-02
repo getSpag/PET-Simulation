@@ -82,3 +82,4 @@ You have selected the KIT for cmake when you uopen the project (x64 MSVC)
 from build-ninja/CMakeCache.txt, you can see CMAKE_LINKER as link.exe in same
 directory as cl.exe from MSVC.
 
+--------
