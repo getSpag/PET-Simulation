@@ -1,0 +1,18 @@
+1. Download VSCode or cursor
+2. Clone repo, open in VSCode / cursor
+3. Install Extensions in extensions.json
+    select a kit when CMake prompts (ex visual studio build tools x64)
+4. Ensure CMake executable is on your PATH
+5. Point clangd parameter
+    --query-driver= c/c++ compiler in kit you selected when CMake asked you to select a kit
+
+    in settings.json
+    (for intellisense)
+
+
+Run -- 
+    windows: .\build-ninja\PET_new.exe 10 10
+             .\build-ninja\PET.exe 10 10
+
+    macos: ./build-ninja/PET_new 10 10
+           ./build-ninja/PET 10 10
