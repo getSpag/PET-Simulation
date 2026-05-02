@@ -7,8 +7,9 @@
   */
   "cmake.configureOnOpen": true,
   "cmake.generator": "Ninja",
-  "cmake.buildDirectory": "${workspaceFolder}/build-ninja",
-  "cmake.cmakePath": "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe",
+  "cmake.buildDirectory": "${workspaceFolder}/build-ninja",// can this be cross platform
+  // "cmake.cmakePath": "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe",
+  // instead of above, set Cmake on your PATH so it's platform independent
   "cmake.configureSettings": {
     "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
   },
