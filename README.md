@@ -37,6 +37,9 @@ UPDATE APRIL 8 2026
 
 
 TODO
+- Fix absolute paths for platform agnostic behaviour. It is configured for my windows machine right now.
+- Simplify CMake
+- Basic CUDA
 - Commenting / cleaning
 - Is normalizing to 0 to 255 any good if max count was less than 255?
 - Verify FPB

@@ -1,3 +1,12 @@
+
+'''''''''''''''''''''''''''''''''''''''''
+GENERALLY, THIS DOES NOT WORK
+PATHS HARDCODED TO MY MACHINE etc
+TROUBLE WITH MACOS INTELISENSE RIGH TNOW
+'''''''''''''''''''''''''''''''''''''''''
+
+
+
 1. Download VSCode or cursor
 2. Clone repo, open in VSCode / cursor
 3. Install Extensions in extensions.json
